@@ -1,9 +1,9 @@
 class BasicBlock:
-    def __init__(self, exprs):
-        self.exprs = exprs
-        0
+    def __init__(self, lines):
+        self.lines = lines
 
-class Expression:
-    def __init__(self):
-        0
+class Line:
+    def __init__(self, lineNum, ast):
+        self.lineNum = lineNum
+        self.ast = ast
 
