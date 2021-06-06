@@ -1,7 +1,8 @@
 import ply.lex as lex
 import re
+import sys
 
-tokens = {
+tokens = (
     # Storage class specifier
     "EXTERN",
     "AUTO",
@@ -31,7 +32,7 @@ tokens = {
     "LONG",
     "DOUBLE",
     "SIGNED",
-    "UNSIGNED",    
+    "UNSIGNED",
     "CONST",
     "ENUM",
     "STRUCT",
@@ -49,13 +50,13 @@ tokens = {
     "RIGHT_BRACKET",
     "LEFT_BRACE",
     "RIGHT_BRACE",
-    "ELLIPSIS" # ...
+    "ELLIPSIS", # ...
     "ASSIGN",
     "SIZEOF",
     "DOT",
     "ARROW",
     "LEFT_SHIFT",
-    "RIGHT_SHIFT"
+    "RIGHT_SHIFT",
     "ASSIGN_LEFT_SHIFT",
     "ASSIGN_RIGHT_SHIFT",
 
@@ -71,7 +72,7 @@ tokens = {
     "ASSIGN_MINUS",
     "ASSIGN_MUL",
     "ASSIGN_DIV",
-    "ASSIGN_MOD"
+    "ASSIGN_MOD",
 
     # Comparison - >, <
     "GREATER",
@@ -84,14 +85,14 @@ tokens = {
     "PIPE",
     "TILDE",
     "CIRCUMFLEX", # ^
-    "SHARP" # #
+    "SHARP", # #
     "EXCLAMATION",
     "QUESTION",
     "AMPERSAND_AMPERSAND",
     "PIPE_PIPE",
     "ASSIGN_AMPERSAND",
     "ASSIGN_PIPE",
-    "ASSIGN_CIRCUMFLEX"
+    "ASSIGN_CIRCUMFLEX",
 
     # Pointer - *, &
     "ASTERISK",
@@ -100,59 +101,53 @@ tokens = {
     # tokens
     "ID",
     "FLOAT_NUM",
-    "STRING",
-    "CHARACTER",
-}
+    "INT_NUM",
+    #"STRING",
+    #"CHARACTER",
+)
 
 # type
 
-reserved_words = {
+identifiers = {
     # Storage class specifier
-    "EXTERN",
-    "AUTO",
-    "STATIC",
-    "REGISTER",
+    "extern" : "EXTERN",
+    "auto" : "AUTO",
+    "static" : "STATIC",
+    "register" : "REGISTER",
 
     # Flow control - for, if
-    "FOR",
-    "IF",
-    "ELSE",
-    "DO",
-    "WHILE",
-    "SWITCH",
-    "CASE",
-    "DEFAULT",
-    "GOTO",
-    "RETURN",
-    "BREAK",
-    "CONTINUE",
+    "for" : "FOR",
+    "if" : "IF",
+    "else" : "ELSE",
+    "do" : "DO",
+    "while" : "WHILE",
+    "switch" : "SWITCH",
+    "case" : "CASE",
+    "default" : "DEFAULT",
+    "goto" : "GOTO",
+    "return" : "RETURN",
+    "break" : "BREAK",
+    "continue" : "CONTINUE",
 
     # Variable type - int, float
-    "INT",
-    "FLOAT",
-    "VOID",
-    "CHAR",
-    "SHORT",
-    "LONG",
-    "DOUBLE",
-    "SIGNED",
-    "UNSIGNED",    
-    "CONST",
-    "ENUM",
-    "STRUCT",
-    "UNION",
-    "VOLATILE",
-    "TYPEDEF",
+    "int" : "INT",
+    "float" : "FLOAT",
+    "void" : "VOID",
+    "char" : "CHAR",
+    "short" : "SHORT",
+    "long" : "LONG",
+    "double" : "DOUBLE",
+    "signed" : "SIGNED",
+    "unsigned" : "UNSIGNED",
+    "const" : "CONST",
+    "enum" : "ENUM",
+    "struct" : "STRUCT",
+    "union" : "UNION",
+    "volatile" : "VOLATILE",
+    "typedef" : "TYPEDEF",
 
     # Operators
-    "SIZEOF",
-
-    # tokens
-    "ID",
-    "FLOAT_NUM",
-    "STRING",
-    "CHARACTER",
-    }
+    "sizeof" : "SIZEOF"
 }
 
 # Operators
@@ -198,8 +193,8 @@ t_LESS_EQUAL = r"<="
 t_AMPERSAND = r"&"
 t_PIPE = r"\|"
 t_TILDE = r"~"
-t_CIRCUMFLEX = r"\^" # r"^" # ^ 
-t_SHARP = r"#" # r"\#" # #
+t_CIRCUMFLEX = r"\^" # r"^" # ^
+t_SHARP = r"\#" # r"\#" # #
 t_EXCLAMATION = r"!"
 t_QUESTION = r"\?"
 t_AMPERSAND_AMPERSAND = r"&&"
@@ -211,3 +206,54 @@ t_ASSIGN_CIRCUMFLEX = r"\^="
 # Pointer - *, &
 t_ASTERISK = r"\*"
 #t_ADDRESS_OPERATOR", # &
+
+def t_ID(token):
+    r"[A-Za-z_][\w]*"
+    if token.value in identifiers.keys():
+        token.type = identifiers[token.value]
+    return token
+
+def t_FLOAT_NUM(token):
+    r"[+-]?((\d*\.\d+)|(\d+))([eE][+-]?\d+)?"
+    token.value = float(token.value)
+    return token
+
+def t_INT_NUM(token):
+    r"[+-]?(([1-9]\d*)|0)"
+    token.value = int(token.value)
+    return token
+    
+def t_SPACE(token):
+    r"[\s]+"
+    token.lexer.lineno += token.value.count("\n")
+
+def t_COMMENT(token):
+    r"((/\*([\w\W]*)?\*/)|(//.*))"
+    token.lexer.lineno += token.value.count("\n")
+
+def t_error(token):
+    # Error handling should be implemented!
+    print("Error in line %d", token.lexer.lineno)
+
+def lex_scanner():
+    input_file = open(sys.argv[1])
+    lines = input_file.readlines()
+    input_file.close()
+
+    strings = ""
+    for line in lines:
+        strings += line
+    
+    lexer.input(strings)
+
+    while True:
+        token = lexer.token()
+        if token is None:
+            break
+        else:
+            print("Line %d: (%s, '%s')" % (token.lineno, token.type, token.value))
+
+lexer = lex.lex()
+
+if __name__ == '__main__':
+    lex_scanner()
