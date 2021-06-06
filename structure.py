@@ -46,7 +46,6 @@ class Symbol_Table:
         else:
             return False
 
-
 class Symbol_Entry:
     def __init__(self, s_type, s_length, s_next):
         self.type = s_type
