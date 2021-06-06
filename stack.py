@@ -1,4 +1,8 @@
 # TODO Value table
+class ValueTable:
+    def __init__(self):
+        self.table = {} # Dictionary
+
 
 class ValueStack:
     def __init__(self):
