@@ -1,3 +1,7 @@
+def function_call(name, line, value_table):
+    
+    pass
+
 class ValueTable:
     def __init__(self, local_list):
         for local in local_list:
@@ -9,9 +13,12 @@ class ValueTable:
     def free_local(self):
         value_stack.free(len(self.table))
 
-    def get_value(self):
-
-        pass
+    def get_value(self, name):
+        return value_stack.get_value(self.table[name])
+    def get_history(self, name):
+        return value_stack.get_history(self.table[name])
+    def set_value(self, name, value, line):
+        value_stack.set_value(self.table[name], value, line)
 
 class ValueStack:
     def __init__(self):
@@ -53,7 +60,7 @@ class CallStack:
         self.called = self.called[1:]
         return self.called[0]
 
-# Calling context
+# Calling context. Stores parent function name and line
 class CallContext:
     def __init__(self, fn_name, cur_line):
         self.name = fn_name
