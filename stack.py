@@ -1,8 +1,17 @@
-# TODO Value table
 class ValueTable:
-    def __init__(self):
-        self.table = {} # Dictionary
+    def __init__(self, local_list):
+        for local in local_list:
+            self.table[local] = -1 # Invalid address
+    # Allocates a local variable
+    def allocate_local(self, name, value, line):
+        self.table[name] = value_stack.allocate(value, line)
+    # Frees all local variable
+    def free_local(self):
+        value_stack.free(len(self.table))
 
+    def get_value(self):
+
+        pass
 
 class ValueStack:
     def __init__(self):
@@ -18,7 +27,7 @@ class ValueStack:
         self.values = self.values[:-num]
 
     def __get__(self, address):
-        if(address > len(self.values)):
+        if(address > len(self.values) or address < 0):
             print("Error: Stack inconsistency")
         return self.values[address]
     # Attains certain value via address
@@ -49,3 +58,7 @@ class CallContext:
     def __init__(self, fn_name, cur_line):
         self.name = fn_name
         self.line = cur_line
+
+# These stacks are global
+value_stack = ValueStack()
+call_stack = CallStack()
