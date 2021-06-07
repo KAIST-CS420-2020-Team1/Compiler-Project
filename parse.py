@@ -8,48 +8,71 @@ precedence = (
     ('right', 'ELSE'),
 )
 
-class TranslationUnit:
-    def __init__(self, decl):
-        self.decls = [decl]
-    def add(self, decl):
-        self.decls = self.decls + [decl]
-        return self
+# Register to subs to update
+class Lined:
+    def __init__(self, subs):
+        self.subs = subs
+    # Sets line, and returns the last line
+    def set_line(self, line):
+        self.line_num = line
+        for sub in self.subs:
+            line = sub.set_line(line)
+        return line
+class SingleLined(Lined):
+    def __init__(self):
+        super().__init__([])
+    def set_line(self, line):
+        self.line_num = line
+        return line + 1
+
+class TranslationUnit(Lined):
+    def __init__(self, decls):
+        super().__init__(decls)
+        self.decls = decls
+        self.set_line(0)
     def __str__(self):
         return "\n".join([decl.__str__() for decl in self.decls])
 
 class ParseError(Exception):
     "Exception raised whenever a parsing error occurs."
 
-def p_translation_unit_01(t):
-    '''translation_unit : external_declaration'''
+def p_translation_unit(t):
+    '''translation_unit : top_level_list'''
     t[0] = TranslationUnit(t[1])
 
-def p_translation_unit_02(t):
-    '''translation_unit : translation_unit external_declaration'''
-    t[0] = t[1].add(t[2])
+def p_top_level_list_01(t):
+    '''top_level_list : top_level_declaration'''
+    t[0] = [ t[1] ]
+def p_top_level_list_02(t):
+    '''top_level_list : top_level_list top_level_declaration'''
+    t[0] = t[1] + [ t[2] ]
 
 def p_external_declaration(t):
-    '''external_declaration : function_definition
+    '''top_level_declaration : function_definition
                             | declaration'''
     t[0] = t[1]
 
 
-class FunctionDefn():
+class FunctionDefn(Lined):
     def __init__(self, r_type, declarator, body):
+        super().__init__([])
         self.r_type = r_type
         self.declarator = declarator
         self.body = body
+    def set_line(self, line):
+        self.line_num = line
+        line = self.body.set_line(line + 1)
+        return line
     def __str__(self):
         return "[ret: {}, decl: {} >> \n{}]".format(self.r_type, self.declarator, self.body)
 
-class Declaration():
+class Declaration(SingleLined):
     def __init__(self, base_type, decl_assigns):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
         self.is_const = False
-        self.line_num = 0 # TODO
     def __str__(self):
-        return "[base: {}, declare: [{}], const: {}]".format(self.base_type, ",".join(map(str, self.decl_assigns)), self.is_const)
+        return "{}> [base: {}, declare: [{}], const: {}]".format(self.line_num, self.base_type, ",".join(map(str, self.decl_assigns)), self.is_const)
 class Assigned():
     def __init__(self, decl_in, value):
         self.decl_in = decl_in
@@ -169,12 +192,13 @@ def p_parameter_declaration(t):
     p_declaration_01(t) # Same designation
 
 
-class Body:
+class Body(Lined):
     def __init__(self, decls, stmts):
+        super().__init__(decls + stmts)
         self.decls = decls
         self.stmts = stmts
     def __str__(self):
-        return "\n".join(map(str, self.decls)) + "\n" + "\n".join(map(str, self.stmts))
+        return "\n".join(map(str, self.subs))
 
 def p_body(t):
     '''body : LEFT_BRACE declaration_list statement_list RIGHT_BRACE'''
@@ -327,47 +351,59 @@ def p_primary_expression_04(t):
     t[0] = t[2]
 
 
-class Statement:
+class Statement(SingleLined):
     def __init__(self, content):
         self.content = content
-        self.line_num = 0 # TODO
     def __str__(self):
-        return str(self.content)
+        return "{}> {}".format(self.line_num, self.content)
 
 # While or For loop
-class Iteration:
+class Iteration(Lined):
     # loopDesc: condition for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
+        super().__init__([])
         self.loopDesc = loopDesc
         self.body = body
+    def set_line(self, line):
+        self.line_num = line
+        line = self.body.set_line(line + 1)
+        return line
     def __str__(self):
-        return "ite[{}] [{}]".format(self.loopDesc, self.body)
+        return "ite[{}] [\n{}\n]".format(self.loopDesc, self.body)
 class ForDesc:
     def __init__(self, init, iter, until):
         self.init = init
         self.iter = iter
         self.until = until
-        pass
+    def __str__(self):
+        return "{} | {} | {}".format(self.init, self.iter, self.until)
 
 # If Statement
-class Selection:
+class Selection(Lined):
     def __init__(self, cond, thenB, elseB):
+        super().__init__([thenB, elseB])
         self.cond = cond
         self.thenB = thenB
         self.elseB = elseB
         self.hasElse = elseB != []
+    def set_line(self, line):
+        self.line_num = line
+        line = self.thenB.set_line(line + 1) # TODO Same-line statement - "need significant \n"
+        if self.hasElse:
+            line = self.elseB.set_line(line)
+        return line
     def __str__(self):
-        return "cond[{}] [\n{}\notherwise {}]".format(self.cond, self.thenB, self.elseB)
+        return "cond[{}] [\n{}\n] [{}]".format(self.cond, self.thenB, self.elseB)
 
 def p_statement(t):
     '''statement : body
                  | expression_statement
                  | selection_statement
                  | iteration_statement'''
-    if isinstance(t[1], Body):
-        t[0] = t[1]
-    else:
+    if not isinstance(t[1], Lined):
         t[0] = Statement(t[1])
+    else:
+        t[0] = t[1]
 
 def p_iteration_statement_01(t):
     '''iteration_statement : WHILE LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement'''
