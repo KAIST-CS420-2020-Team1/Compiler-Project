@@ -52,7 +52,7 @@ def p_external_declaration(t):
                             | declaration'''
     t[0] = t[1]
 
-
+# Need to look into declarator for * and []
 class FunctionDefn(Lined):
     def __init__(self, r_type, declarator, body):
         super().__init__([])
@@ -66,16 +66,24 @@ class FunctionDefn(Lined):
     def __str__(self):
         return "[ret: {}, decl: {} >> \n{}]".format(self.r_type, self.declarator, self.body)
 
+class EachDecl():
+    def __init__(self, type, name):
+        self.type = type
+        self.name = name
+
+# Need to look into declarator for * and []
 class Declaration(SingleLined):
     def __init__(self, base_type, decl_assigns):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
         self.is_const = False
+    def desugar(self):
+        pass
     def __str__(self):
         return "{}> [base: {}, declare: [{}], const: {}]".format(self.line_num, self.base_type, ",".join(map(str, self.decl_assigns)), self.is_const)
 class Assigned():
-    def __init__(self, decl_in, value):
-        self.decl_in = decl_in
+    def __init__(self, declarator, value):
+        self.decl_in = declarator
         self.value = value
     def __str__(self):
         return "{} := {}".format(self.decl_in, self.value)
@@ -354,8 +362,9 @@ def p_primary_expression_04(t):
 class Statement(SingleLined):
     def __init__(self, content):
         self.content = content
+        self.returning = False
     def __str__(self):
-        return "{}> {}".format(self.line_num, self.content)
+        return "{}> {} {}".format(self.line_num, ["", "return"][self.returning], self.content)
 
 # While or For loop
 class Iteration(Lined):
@@ -397,6 +406,7 @@ class Selection(Lined):
 
 def p_statement(t):
     '''statement : body
+                 | return_statement
                  | expression_statement
                  | selection_statement
                  | iteration_statement'''
@@ -404,6 +414,12 @@ def p_statement(t):
         t[0] = Statement(t[1])
     else:
         t[0] = t[1]
+
+def p_return_statement(t):
+    '''return_statement : RETURN expression SEMICOLON'''
+    t[0] = Statement(t[2])
+    t[0].returning = True
+
 
 def p_iteration_statement_01(t):
     '''iteration_statement : WHILE LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement'''

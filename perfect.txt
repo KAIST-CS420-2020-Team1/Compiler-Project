@@ -21,4 +21,5 @@ void main()
  		if (i == sum) write(i);
  		++i;
  	}
+	return i;
 }

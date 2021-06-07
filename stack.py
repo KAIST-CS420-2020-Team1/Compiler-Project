@@ -1,9 +1,15 @@
-def function_call(name, line, value_table):
-    
-    pass
+# Calls from the caller
+def function_call(caller_name, caller_line):
+    call_stack.link(CallContext(caller_name, caller_line))
+
+# Returns to the caller
+def function_return(callee_val_table):
+    callee_val_table.free_local()
+    return call_stack.ret()
 
 class ValueTable:
     def __init__(self, local_list):
+        self.table = dict()
         for local in local_list:
             self.table[local] = -1 # Invalid address
     # Allocates a local variable
@@ -53,7 +59,7 @@ class CallStack:
     def __init__(self):
         self.called = []
     # Stores current context into the stack
-    def call(self, ctxt):
+    def link(self, ctxt):
         self.called = [ctxt] + self.called
     # Returns to the parent, returning the context
     def ret(self):
