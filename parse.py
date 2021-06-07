@@ -15,7 +15,7 @@ class TranslationUnit:
         self.decls = self.decls + [decl]
         return self
     def __str__(self):
-        return self.decls.__str__()
+        return "\n".join([decl.__str__() for decl in self.decls])
 
 class ParseError(Exception):
     "Exception raised whenever a parsing error occurs."
@@ -39,12 +39,23 @@ class FunctionDefn():
         self.r_type = r_type
         self.declarator = declarator
         self.body = body
+    def __str__(self):
+        return "[ret: {}, decl: {} >> \n{}]".format(self.r_type, self.declarator, self.body)
 
 class Declaration():
     def __init__(self, base_type, decl_assigns):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
         self.is_const = False
+        self.line_num = 0 # TODO
+    def __str__(self):
+        return "[base: {}, declare: [{}], const: {}]".format(self.base_type, ",".join(map(str, self.decl_assigns)), self.is_const)
+class Assigned():
+    def __init__(self, decl_in, value):
+        self.decl_in = decl_in
+        self.value = value
+    def __str__(self):
+        return "{} := {}".format(self.decl_in, self.value)
 
 def p_function_definition(t):
     '''function_definition : type_specifier declarator body'''
@@ -61,10 +72,10 @@ def p_declaration_02(t):
 
 def p_declarator_assign_01(t):
     '''declarator_assign : declarator'''
-    t[0] = { 'name' : t[1], 'value' : '' }
+    t[0] = t[1]
 def p_declarator_assign_02(t):
     '''declarator_assign : declarator ASSIGN expression'''
-    t[0] = { 'name' : t[1], 'value' : t[3] }
+    t[0] = Assigned(t[1], t[3])
 
 def p_decl_assign_list_01(t):
     '''declarator_assign_list : declarator_assign'''
@@ -85,15 +96,19 @@ def p_decl_list_02(t):
 class Float():
     def __init__(self):
         self.type = "float"
-    pass
+    def __str__(self):
+        return "float"
 class Int():
     def __init__(self):
         self.type = "int"
-
+    def __str__(self):
+        return "int"
 
 class Identifier():
     def __init__(self, name):
         self.name = name
+    def __str__(self):
+        return self.name
 
 class Asterisked():
     def __init__(self, base):
@@ -106,10 +121,12 @@ class Fn_Declarator():
     def __init__(self, base, params):
         self.base = base
         self.params = params
+    def __str__(self):
+        return "{} w params {}".format(self.base, self.params)
 
 def p_type_specifier_01(t):
     '''type_specifier : INT'''
-    t[0] = Float()
+    t[0] = Int()
 def p_type_specifier_02(t):
     '''type_specifier : FLOAT'''
     t[0] = Float()
@@ -156,6 +173,8 @@ class Body:
     def __init__(self, decls, stmts):
         self.decls = decls
         self.stmts = stmts
+    def __str__(self):
+        return "\n".join(map(str, self.decls)) + "\n" + "\n".join(map(str, self.stmts))
 
 def p_body(t):
     '''body : LEFT_BRACE declaration_list statement_list RIGHT_BRACE'''
@@ -165,20 +184,31 @@ class Const:
     def __init__(self, value, type):
         self.value = value
         self.type = type # Int or Float
+    def __str__(self):
+        return "{}{}".format(self.value, self.type)
 class UniOp:
     def __init__(self, operand, op):
         self.op = op
         self.operand = operand
         self.postfix = False
+    def __str__(self):
+        if(self.postfix):
+            return "({}){}".format(self.operand, self.op)
+        else:
+            return "{}({})".format(self.op, self.operand)
 class BinOp:
     def __init__(self, left, right, op):
         self.op = op
         self.left = left
         self.right = right
+    def __str__(self):
+        return "{} {} {}".format(self.left, self.op, self.right)
 class FuncCall:
     def __init__(self, fn_name, args):
         self.fn_name = fn_name
         self.args = args
+    def __str__(self):
+        return "{}({})".format(self.fn_name, ",".join(map(str, self.args)))
 class ArrayIdx:
     def __init__(self, name, index):
         self.name = name
@@ -261,10 +291,10 @@ def p_unary_expression_05(t):
     t[0] = UniOp(t[2], '&')
 def p_unary_expression_06(t):
     '''unary_expression : PLUS_PLUS unary_expression'''
-    t[0] = UniOp(t[1], '++')
+    t[0] = UniOp(t[2], '++')
 def p_unary_expression_07(t):
     '''unary_expression : MINUS_MINUS unary_expression'''
-    t[0] = UniOp(t[1], '--')
+    t[0] = UniOp(t[2], '--')
 
 def p_mult_expression_01(t):
     '''mult_expression : unary_expression'''
@@ -297,12 +327,21 @@ def p_primary_expression_04(t):
     t[0] = t[2]
 
 
+class Statement:
+    def __init__(self, content):
+        self.content = content
+        self.line_num = 0 # TODO
+    def __str__(self):
+        return str(self.content)
+
 # While or For loop
 class Iteration:
     # loopDesc: condition for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
         self.loopDesc = loopDesc
         self.body = body
+    def __str__(self):
+        return "ite[{}] [{}]".format(self.loopDesc, self.body)
 class ForDesc:
     def __init__(self, init, iter, until):
         self.init = init
@@ -317,13 +356,18 @@ class Selection:
         self.thenB = thenB
         self.elseB = elseB
         self.hasElse = elseB != []
+    def __str__(self):
+        return "cond[{}] [\n{}\notherwise {}]".format(self.cond, self.thenB, self.elseB)
 
 def p_statement(t):
     '''statement : body
                  | expression_statement
                  | selection_statement
                  | iteration_statement'''
-    t[0] = t[1]
+    if isinstance(t[1], Body):
+        t[0] = t[1]
+    else:
+        t[0] = Statement(t[1])
 
 def p_iteration_statement_01(t):
     '''iteration_statement : WHILE LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement'''
