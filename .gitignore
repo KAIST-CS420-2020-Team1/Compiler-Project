@@ -139,3 +139,5 @@ dmypy.json
 *.pdf
 *.pptx
 Team
+*.out
+parsetab.py
