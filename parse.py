@@ -10,10 +10,12 @@ precedence = (
 
 class TranslationUnit:
     def __init__(self, decl):
-        self.decls = decl
+        self.decls = [decl]
     def add(self, decl):
         self.decls = self.decls + [decl]
         return self
+    def __str__(self):
+        return self.decls.__str__()
 
 class ParseError(Exception):
     "Exception raised whenever a parsing error occurs."
@@ -39,29 +41,37 @@ class FunctionDefn():
         self.body = body
 
 class Declaration():
-    def __init__(self, base_type, declarator):
+    def __init__(self, base_type, decl_assigns):
         self.base_type = base_type
-        self.declarator = declarator
+        self.decl_assigns = decl_assigns
         self.is_const = False
-        self.value_expr = ''
 
 def p_function_definition(t):
     '''function_definition : type_specifier declarator body'''
-    t[2].set_base_type(t[1])
-    t[0] = FunctionDefn(t[2], t[3]) # Need to change this
+    t[0] = FunctionDefn(t[1], t[2], t[3])
 
 
 def p_declaration_01(t):
-    '''declaration : type_specifier declarator SEMICOLON'''
+    '''declaration : type_specifier declarator_assign_list SEMICOLON'''
     t[0] = Declaration(t[1], t[2])
-def p_declaration_02(t): # TODO Is this legal
+def p_declaration_02(t):
     '''declaration : CONST declaration'''
     t[0] = t[2]
     t[0].is_const = True
-def p_declaration_03(t):
-    '''declaration : type_specifier declarator ASSIGN expression SEMICOLON'''
-    t[0] = Declaration(t[1], t[2])
-    t[0].value_expr = t[4]
+
+def p_declarator_assign_01(t):
+    '''declarator_assign : declarator'''
+    t[0] = { 'name' : t[1], 'value' : '' }
+def p_declarator_assign_02(t):
+    '''declarator_assign : declarator ASSIGN expression'''
+    t[0] = { 'name' : t[1], 'value' : t[3] }
+
+def p_decl_assign_list_01(t):
+    '''declarator_assign_list : declarator_assign'''
+    t[0] = [ t[1] ]
+def p_decl_assign_list_02(t):
+    '''declarator_assign_list : declarator_assign_list COMMA declarator_assign'''
+    t[0] = t[1] + [ t[3] ]
 
 
 def p_decl_list_01(t):
@@ -159,6 +169,7 @@ class UniOp:
     def __init__(self, operand, op):
         self.op = op
         self.operand = operand
+        self.postfix = False
 class BinOp:
     def __init__(self, left, right, op):
         self.op = op
@@ -213,6 +224,14 @@ def p_postfix_expression_02(t):
 def p_postfix_expression_03(t):
     '''postfix_expression : postfix_expression LEFT_BRACKET expression RIGHT_BRACKET'''
     t[0] = ArrayIdx(t[1], t[3])
+def p_postfix_expression_04(t):
+    '''postfix_expression : postfix_expression PLUS_PLUS'''
+    t[0] = UniOp(t[1], '++')
+    t[0].postfix = True
+def p_postfix_expression_05(t):
+    '''postfix_expression : postfix_expression MINUS_MINUS'''
+    t[0] = UniOp(t[1], '--')
+    t[0].postfix = True
 
 def p_argument_expression_list_01(t):
     '''argument_expression_list : expression'''
@@ -240,6 +259,12 @@ def p_unary_expression_04(t):
 def p_unary_expression_05(t):
     '''unary_expression : AMPERSAND unary_expression'''
     t[0] = UniOp(t[2], '&')
+def p_unary_expression_06(t):
+    '''unary_expression : PLUS_PLUS unary_expression'''
+    t[0] = UniOp(t[1], '++')
+def p_unary_expression_07(t):
+    '''unary_expression : MINUS_MINUS unary_expression'''
+    t[0] = UniOp(t[1], '--')
 
 def p_mult_expression_01(t):
     '''mult_expression : unary_expression'''
@@ -336,8 +361,9 @@ def test_parse():
     for line in lines:
         strings += (line + "\n")
 
-    parser.parse(strings)
+    result = parser.parse(strings)
     print('Done')
+    print(result)
 
 if __name__ == '__main__':
     test_parse()
