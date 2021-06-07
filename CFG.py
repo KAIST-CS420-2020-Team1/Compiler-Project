@@ -39,60 +39,61 @@ class Node:
         pass
 
     def next_line(self, cur):
+        eval(self.get_line(cur))
         if cur != max(self.get_line_list()):
-            return self, self.get_line(cur+1)
+            return self, self.get_line(cur+1), cur+1
         else:
             if self.branch:
                 for i, pred in enumerate(self.pred):
                     if is_true(evaluate(pred)):
                         next = self.get_next()[i]
-                        return next, next.get_line(self.get_line_list()[0])
+                        return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
                 raise Exception("no true branch")
             else:
                 next = self.get_next()[0]
-                return next, next.get_line(self.get_line_list()[0])
+                return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
 
-class Block:
-    def __init__(self):
-        pass
+def evaluate(self, expr):
+    if is_decl:
+        variable = ...
+        var_type = ...
+        # int a; no declaration with init value.
+        symbol_table.add(variable, var_type, None)
+        return None
+    elif is_assign:
+        # a = 2;
+        variable = ...
+        value = evaluate(...)
+        symbol_table.update(variable, value)
+        return None
+    elif is_var:
+        # variable: a
+        return symbol_table.find(expr)
+    elif is_const:
+        # const: 3
+        return get_num(expr)
+    elif is_binary:
+        # a + b
+        lhs = ...
+        rhs = ...
+        op = ...
+        return op(evaluate(lhs), evaluate(rhs))
+    elif is_unary:
+        # a++
+        operand = ...
+        op = ...
+        return op(evaluate(operand))
 
-    def evaluate(self, expr):
-        if is_decl:
-            variable = ...
-            var_type = ...
-            # int a; no declaration with init value.
-            symbol_table.add(variable, var_type, None)
-            pass
-        elif is_assign:
-            # a = 2;
-            variable = ...
-            value = evaluate(...)
-            symbol_table.update(variable, value)
-            pass
-        elif is_var:
-            # variable: a
-            return symbol_table.find(expr)
-        elif is_const:
-            # const: 3
-            return get_num(expr)
-        elif is_binary:
-            # a + b
-            lhs = ...
-            rhs = ...
-            op = ...
-            return op(evaluate(lhs), evaluate(rhs))
-        elif is_unary:
-            # a++
-            operand = ...
-            op = ...
-            return op(evaluate(operand))
-
-        elif is_call:
-            # some_func(x, y)
-            pass
-        elif is_return:
-            # return something;
-            pass
+    elif is_call:
+        # some_func(x, y)
+        call_stack.insert(some_func)
+        cur_symbol_table = function_table.get_symbom_table(some_func)
+        return None
+    elif is_return:
+        # return something;
+        call_stack.pop()
+        cur_symbol_table = function_table.get_symbom_table(some_func)
+        return None
 
 
 def generate_graph(ast):
@@ -126,6 +127,13 @@ def generate_graph(ast):
             body = get_body(stmt)
             loop_node, loop_last_node = generate_graph(body)
 
+            loop_end_node = Node([], [], pred)
+            loop_end_node.insert_next(loop_node)
+
+            for last_node in last_nodes:
+                last_node.insert_next(loop_node)
+            last_nodes += loop_last_node
+
         else:
             pred = get_pred(stmt)
             node = Node(block, line_list, pred)
@@ -145,8 +153,5 @@ def generate_graph(ast):
                 br_last_nodes += br_last_node
             last_nodes = br_last_nodes
 
-            block = []
-            line_list = []
-            pred = []
 
     return root, last_nodes
