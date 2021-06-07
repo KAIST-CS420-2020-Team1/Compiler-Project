@@ -141,13 +141,17 @@ class Identifier():
     def __str__(self):
         return self.name
 
-class Asterisked():
+class MULed():
     def __init__(self, base):
         self.base = base
+    def __str__(self):
+        return "<ptr>{}".format(self.base)
 class Arrayed():
     def __init__(self, base, len):
         self.base = base
         self.len = len
+    def __str__(self):
+        return "{}[{}]".format(self.base, self.len)
 class Fn_Declarator():
     def __init__(self, base, params):
         self.base = base
@@ -170,8 +174,8 @@ def p_declarator_01(t):
     '''declarator : direct_declarator'''
     t[0] = t[1]
 def p_declarator_02(t):
-    '''declarator : ASTERISK declarator'''
-    t[0] = Asterisked(t[2])
+    '''declarator : MUL declarator'''
+    t[0] = MULed(t[2])
 
 
 def p_direct_declarator_01(t):
@@ -245,6 +249,8 @@ class ArrayIdx:
     def __init__(self, name, index):
         self.name = name
         self.index = index
+    def __str__(self):
+        return "{}.[{}]".format(self.name, self.index)
 
 def p_expression_statement(t):
     '''expression_statement : expression SEMICOLON'''
@@ -316,7 +322,7 @@ def p_unary_expression_03(t):
     '''unary_expression : PLUS unary_expression'''
     t[0] = t[2]
 def p_unary_expression_04(t):
-    '''unary_expression : ASTERISK unary_expression'''
+    '''unary_expression : MUL unary_expression'''
     t[0] = UniOp(t[2], '*')
 def p_unary_expression_05(t):
     '''unary_expression : AMPERSAND unary_expression'''
@@ -332,7 +338,7 @@ def p_mult_expression_01(t):
     '''mult_expression : unary_expression'''
     t[0] = t[1]
 def p_mult_expression_02(t):
-    '''mult_expression : mult_expression ASTERISK unary_expression
+    '''mult_expression : mult_expression MUL unary_expression
                        | mult_expression DIV unary_expression    
                        | mult_expression MOD unary_expression'''
     t[0] = BinOp(t[1], t[3], t[2])

@@ -6,6 +6,7 @@ const int max = 500;
 
 void main()
 {
+	int *place[2];
 	int i, j, k;
 	int rem, sum; //rem : remainder
   	i = 2;
@@ -21,5 +22,6 @@ void main()
  		if (i == sum) write(i);
  		++i;
  	}
+	i[2] = 3 * 1;
 	return i;
 }

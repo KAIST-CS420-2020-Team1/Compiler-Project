@@ -214,7 +214,7 @@ def t_ID(token):
     return token
 
 def t_FLOAT_NUM(token):
-    r"[+-]?((\d*\.\d+)|(\d+))([eE][+-]?\d+)?"
+    r"[+-]?((\d*\.\d+))([eE][+-]?\d+)?"
     token.value = float(token.value)
     return token
 
