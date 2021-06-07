@@ -70,6 +70,27 @@ class EachDecl():
     def __init__(self, type, name):
         self.type = type
         self.name = name
+        self.value = None
+    def __str__(self):
+        return "{} : {} = {}".format(self.name, self.type, self.value)
+
+    def From(base_type, ator):
+        if isinstance(ator, Assigned):
+            decl = EachDecl.From(base_type, ator.decl_in)
+            decl.value = ator.value
+            return decl
+        elif(isinstance(ator, Asterisked)):
+            decl = EachDecl.From(base_type, ator.base)
+            decl.type = Asterisked(decl.type)
+            return decl
+        elif(isinstance(ator, Arrayed)):
+            decl = EachDecl.From(base_type, ator.base)
+            decl.type = Arrayed(decl.type, ator.len)
+            return decl
+        elif(isinstance(ator, Identifier)):
+            return EachDecl(base_type, ator.name)
+        else:
+            raise ValueError("Illegal value")
 
 # Need to look into declarator for * and []
 class Declaration(SingleLined):
@@ -77,8 +98,9 @@ class Declaration(SingleLined):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
         self.is_const = False
+        print("\n".join(map(str, self.desugar())))
     def desugar(self):
-        pass
+        return [EachDecl.From(self.base_type, da) for da in self.decl_assigns]
     def __str__(self):
         return "{}> [base: {}, declare: [{}], const: {}]".format(self.line_num, self.base_type, ",".join(map(str, self.decl_assigns)), self.is_const)
 class Assigned():
@@ -141,7 +163,7 @@ class Identifier():
     def __str__(self):
         return self.name
 
-class MULed():
+class Asterisked():
     def __init__(self, base):
         self.base = base
     def __str__(self):
@@ -169,14 +191,12 @@ def p_type_specifier_03(t):
     '''type_specifier : VOID'''
     t[0] = []
 
-
 def p_declarator_01(t):
     '''declarator : direct_declarator'''
     t[0] = t[1]
 def p_declarator_02(t):
     '''declarator : MUL declarator'''
-    t[0] = MULed(t[2])
-
+    t[0] = Asterisked(t[2])
 
 def p_direct_declarator_01(t):
     '''direct_declarator : ID'''
