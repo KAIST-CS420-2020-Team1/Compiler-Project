@@ -25,6 +25,7 @@ class SingleLined(Lined):
         self.line_num = line
         return line + 1
 
+# Translation Unit, holds global declarations or function declarations
 class TranslationUnit(Lined):
     def __init__(self, decls):
         super().__init__(decls)
@@ -476,15 +477,9 @@ parser = yacc.yacc(debug=1)
 
 def test_parse():
     input_file = open(sys.argv[1])
-    lines = input_file.readlines()
-    input_file.close()
-
-    strings = ""
-    for line in lines:
-        strings += (line + "\n")
-
-    result = parser.parse(strings)
+    result = parser.parse(input_file.read())
     print('Done')
+    print('')
     print(result)
 
 if __name__ == '__main__':
