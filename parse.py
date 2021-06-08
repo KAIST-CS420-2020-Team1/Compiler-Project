@@ -53,6 +53,17 @@ def p_external_declaration(t):
                             | declaration'''
     t[0] = t[1]
 
+# Desugars base type and declarator
+def desugar_declarator(base_type, ator):
+    if(isinstance(ator, Asterisked)):
+        tp, at = desugar_declarator(base_type, ator.base)
+        return Asterisked(tp), at
+    elif(isinstance(ator, Arrayed)):
+        tp, at = desugar_declarator(base_type, ator.base)
+        return Arrayed(tp, ator.len), at
+    else:
+        return base_type, ator
+
 # Need to look into declarator for * and []
 class FunctionDefn(Lined):
     def __init__(self, r_type, declarator, body):
@@ -60,6 +71,8 @@ class FunctionDefn(Lined):
         self.r_type = r_type
         self.declarator = declarator
         self.body = body
+    def desugar_type_decl(self):
+        return desugar_declarator(self.r_type, self.declarator)
     def set_line(self, line):
         self.line_num = line
         line = self.body.set_line(line + 1)
@@ -99,7 +112,7 @@ class Declaration(SingleLined):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
         self.is_const = False
-        print("\n".join(map(str, self.desugar())))
+        # print("\n".join(map(str, self.desugar())))
     def desugar(self):
         return [EachDecl.From(self.base_type, da) for da in self.decl_assigns]
     def __str__(self):
@@ -222,7 +235,7 @@ def p_parameter_list_03(t):
 
 def p_parameter_declaration(t):
     '''parameter_declaration : type_specifier declarator'''
-    p_declaration_01(t) # Same designation
+    t[0] = Declaration(t[1], [ t[2] ])
 
 
 class Body(Lined):

@@ -42,6 +42,8 @@ class ValueStack:
         self.values = self.values[:-num]
 
     def __get__(self, address):
+        if(address == -1):
+            return {"value": None, "history": []} # Not yet initialized
         if(address > len(self.values) or address < 0):
             print("Error: Stack inconsistency")
         return self.values[address]
