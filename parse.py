@@ -2,6 +2,9 @@ import ply.yacc as yacc
 import scanner
 import sys
 
+# TODO printf
+# TODO break, continue
+
 tokens = scanner.tokens
 
 precedence = (
@@ -66,29 +69,30 @@ class FunctionDefn(Lined):
     def __str__(self):
         return "{}> [ret: {}, decl: {} >> \n{}]".format(self.line_num, self.r_type, self.declarator, self.body)
 
-class EachDecl():
-    def __init__(self, type, name):
+class EachDecl(Lined):
+    def __init__(self, type, name, line):
         self.type = type
         self.name = name
         self.value = None
+        self.line_num = line
     def __str__(self):
         return "{} : {} = {}".format(self.name, self.type, self.value)
 
-    def From(base_type, ator):
+    def From(line, base_type, ator):
         if isinstance(ator, Assigned):
-            decl = EachDecl.From(base_type, ator.decl_in)
+            decl = EachDecl.From(line, base_type, ator.decl_in)
             decl.value = ator.value
             return decl
         elif(isinstance(ator, Asterisked)):
-            decl = EachDecl.From(base_type, ator.base)
+            decl = EachDecl.From(line, base_type, ator.base)
             decl.type = Asterisked(decl.type)
             return decl
         elif(isinstance(ator, Arrayed)):
-            decl = EachDecl.From(base_type, ator.base)
+            decl = EachDecl.From(line, base_type, ator.base)
             decl.type = Arrayed(decl.type, ator.len)
             return decl
         elif(isinstance(ator, Identifier)):
-            return EachDecl(base_type, ator.name)
+            return EachDecl(base_type, ator.name, line)
         else:
             raise ValueError("Illegal value")
 
@@ -99,7 +103,7 @@ class Declaration(Lined):
         self.decl_assigns = decl_assigns
         self.is_const = False
     def desugar(self):
-        return [EachDecl.From(self.base_type, da) for da in self.decl_assigns]
+        return [EachDecl.From(self.line_num, self.base_type, da) for da in self.decl_assigns]
     def __str__(self):
         return "{}> [base: {}, declare: [{}], const: {}]".format(self.line_num, self.base_type, ",".join(map(str, self.decl_assigns)), self.is_const)
 class Assigned():
@@ -393,7 +397,7 @@ class Statement(Lined):
     def __str__(self):
         return "{}> {} {}".format(self.line_num, ["", "return"][self.returning], self.content)
 
-# While or For loop
+# While or For loop. Its body is Body
 class Iteration(Lined):
     # loopDesc: condition for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
@@ -410,7 +414,7 @@ class ForDesc:
     def __str__(self):
         return "{} | {} | {}".format(self.init, self.iter, self.until)
 
-# If Statement
+# If Statement. Its body is Body
 class Selection(Lined):
     def __init__(self, cond, thenB, elseB):
         super().__init__([thenB, elseB])
