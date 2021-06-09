@@ -74,8 +74,11 @@ def check_lvalue(expr):
 
 def check_stmt(expr):
     if(isinstance(expr, parse.UniOp)):
-        if(expr.op in ['++', '--']):
+        if(expr.op in ['++', '--']): # Changes
             check_lvalue(expr.operand)
+        elif(expr.op == '*' and isinstance(expr.operand, parse.Const)):
+            print("illegal constant dereferencing".format(expr))
+            raise ValueError("semantic error")
         check_stmt(expr.operand)
     elif(isinstance(expr, parse.BinOp)):
         if(expr.op in ['+=', '-=', '=']): # Assignment

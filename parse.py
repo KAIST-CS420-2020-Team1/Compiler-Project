@@ -13,8 +13,6 @@ precedence = (
 
 # Register to subs to update
 class Lined:
-    def __init__(self, subs):
-        self.subs = subs
     # Sets line, and returns the last line
     def set_line(self, line):
         self.line_num = line
@@ -60,7 +58,6 @@ def desugar_declarator(base_type, ator):
 # Need to look into declarator for * and []
 class FunctionDefn(Lined):
     def __init__(self, r_type, declarator, body):
-        super().__init__([])
         self.r_type = r_type
         self.declarator = declarator
         self.body = body
@@ -231,7 +228,6 @@ def p_parameter_declaration(t):
 
 class Body(Lined):
     def __init__(self, decls, stmts):
-        super().__init__(decls + stmts)
         self.decls = decls
         self.stmts = stmts
     def __str__(self):
@@ -247,6 +243,7 @@ class Const:
         self.type = type # Int or Float
     def __str__(self):
         return "{}{}".format(self.value, self.type)
+# ++, --, &, *
 class UniOp:
     def __init__(self, operand, op):
         self.op = op
@@ -257,6 +254,9 @@ class UniOp:
             return "({}){}".format(self.operand, self.op)
         else:
             return "{}({})".format(self.op, self.operand)
+# +, -, *, /, %
+# =, +=, -=
+# >, >=, <, <=, ==, !=
 class BinOp:
     def __init__(self, left, right, op):
         self.op = op
@@ -264,6 +264,7 @@ class BinOp:
         self.right = right
     def __str__(self):
         return "{} {} {}".format(self.left, self.op, self.right)
+
 class FuncCall:
     def __init__(self, fn_name, args):
         self.fn_name = fn_name
@@ -401,7 +402,6 @@ class Statement(Lined):
 class Iteration(Lined):
     # loopDesc: condition for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
-        super().__init__([])
         if not isinstance(body, Body):
             body = Body([], [ body ]) # Single-lined body
         self.loopDesc = loopDesc
@@ -409,17 +409,16 @@ class Iteration(Lined):
     def __str__(self):
         return "{}> ite[{}] [\n{}\n]".format(self.line_num, self.loopDesc, self.body)
 class ForDesc:
-    def __init__(self, init, iter, until):
+    def __init__(self, init, until, iter):
         self.init = init
-        self.iter = iter
         self.until = until
+        self.iter = iter
     def __str__(self):
-        return "{} | {} | {}".format(self.init, self.iter, self.until)
+        return "{} | {} | {}".format(self.init, self.until, self.iter)
 
 # If Statement. Its body is Body
 class Selection(Lined):
     def __init__(self, cond, thenB, elseB):
-        super().__init__([thenB, elseB])
         if not isinstance(thenB, Body):
             thenB = Body([], [ thenB ]) # Single-lined body
         if elseB != [] and not isinstance(elseB, Body):
