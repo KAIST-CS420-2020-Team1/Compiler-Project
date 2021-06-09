@@ -402,6 +402,8 @@ class Iteration(Lined):
     # loopDesc: condition for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
         super().__init__([])
+        if not isinstance(body, Body):
+            body = Body([], [ body ]) # Single-lined body
         self.loopDesc = loopDesc
         self.body = body
     def __str__(self):
@@ -418,6 +420,10 @@ class ForDesc:
 class Selection(Lined):
     def __init__(self, cond, thenB, elseB):
         super().__init__([thenB, elseB])
+        if not isinstance(thenB, Body):
+            thenB = Body([], [ thenB ]) # Single-lined body
+        if elseB != [] and not isinstance(elseB, Body):
+            elseB = Body([], [ elseB ]) # Single-lined body
         self.cond = cond
         self.thenB = thenB
         self.elseB = elseB
