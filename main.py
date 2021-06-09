@@ -56,11 +56,13 @@ def get_function_entry(fndecl):
     p_types = map(lambda x: x.name, params)
     return (decl.base.name, r_type, p_types, fndecl.line_num, symbol_table)
 
+# TODO Same named variable disallowed. Type mismatch(pointer/array nesting level)
+# TODO L-value
+# TODO Block -> AST
+
+
 class MainContext:
     def __init__(self, ast):
-        # TODO Same named variable disallowed. Type mismatch(pointer/array nesting level)
-        # TODO L-value
-        # TODO Block -> AST
         # TODO CFG
 
         # Structures
@@ -109,7 +111,7 @@ if __name__ == '__main__':
     parser = parse.parser
 
     input_file = open(sys.argv[1])
-    parsed = parser.parse(input_file.read())
+    parsed = parser.parse(input_file.read(), tracking=True)
     input_file.close()
     ctxt = MainContext(parsed)
 

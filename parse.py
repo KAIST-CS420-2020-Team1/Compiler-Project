@@ -15,22 +15,12 @@ class Lined:
     # Sets line, and returns the last line
     def set_line(self, line):
         self.line_num = line
-        for sub in self.subs:
-            line = sub.set_line(line)
         return line
-class SingleLined(Lined):
-    def __init__(self):
-        super().__init__([])
-    def set_line(self, line):
-        self.line_num = line
-        return line + 1
 
 # Translation Unit, holds global declarations or function declarations
-class TranslationUnit(Lined):
+class TranslationUnit:
     def __init__(self, decls):
-        super().__init__(decls)
         self.decls = decls
-        self.set_line(0)
     def __str__(self):
         return "\n".join([decl.__str__() for decl in self.decls])
 
@@ -73,12 +63,8 @@ class FunctionDefn(Lined):
         self.body = body
     def desugar_type_decl(self):
         return desugar_declarator(self.r_type, self.declarator)
-    def set_line(self, line):
-        self.line_num = line
-        line = self.body.set_line(line + 1)
-        return line
     def __str__(self):
-        return "[ret: {}, decl: {} >> \n{}]".format(self.r_type, self.declarator, self.body)
+        return "{}> [ret: {}, decl: {} >> \n{}]".format(self.line_num, self.r_type, self.declarator, self.body)
 
 class EachDecl():
     def __init__(self, type, name):
@@ -107,7 +93,7 @@ class EachDecl():
             raise ValueError("Illegal value")
 
 # Need to look into declarator for * and []
-class Declaration(SingleLined):
+class Declaration(Lined):
     def __init__(self, base_type, decl_assigns):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
@@ -126,11 +112,13 @@ class Assigned():
 def p_function_definition(t):
     '''function_definition : type_specifier declarator body'''
     t[0] = FunctionDefn(t[1], t[2], t[3])
+    t[0].set_line(t.lineno(1))
 
 
 def p_declaration_01(t):
     '''declaration : type_specifier declarator_assign_list SEMICOLON'''
     t[0] = Declaration(t[1], t[2])
+    t[0].set_line(t.lineno(1))
 def p_declaration_02(t):
     '''declaration : CONST declaration'''
     t[0] = t[2]
@@ -192,7 +180,7 @@ class Fn_Declarator():
         self.base = base
         self.params = params
     def __str__(self):
-        return "{} w params {}".format(self.base, self.params)
+        return "{} w {}".format(self.base, self.params)
 
 def p_type_specifier_01(t):
     '''type_specifier : INT'''
@@ -398,7 +386,7 @@ def p_prim_expr_04(t):
     t[0] = t[2]
 
 
-class Statement(SingleLined):
+class Statement(Lined):
     def __init__(self, content):
         self.content = content
         self.returning = False
@@ -412,12 +400,8 @@ class Iteration(Lined):
         super().__init__([])
         self.loopDesc = loopDesc
         self.body = body
-    def set_line(self, line):
-        self.line_num = line
-        line = self.body.set_line(line + 1)
-        return line
     def __str__(self):
-        return "ite[{}] [\n{}\n]".format(self.loopDesc, self.body)
+        return "{}> ite[{}] [\n{}\n]".format(self.line_num, self.loopDesc, self.body)
 class ForDesc:
     def __init__(self, init, iter, until):
         self.init = init
@@ -434,14 +418,8 @@ class Selection(Lined):
         self.thenB = thenB
         self.elseB = elseB
         self.hasElse = elseB != []
-    def set_line(self, line):
-        self.line_num = line
-        line = self.thenB.set_line(line + 1) # TODO Same-line statement - "need significant \n"
-        if self.hasElse:
-            line = self.elseB.set_line(line)
-        return line
     def __str__(self):
-        return "cond[{}] [\n{}\n] [{}]".format(self.cond, self.thenB, self.elseB)
+        return "{}> cond[{}] [\n{}\n] [{}]".format(self.line_num, self.cond, self.thenB, self.elseB)
 
 def p_statement(t):
     '''statement : body
@@ -449,10 +427,11 @@ def p_statement(t):
                  | expr_statement
                  | selection_statement
                  | iteration_statement'''
-    if not isinstance(t[1], Lined):
+    if not isinstance(t[1], Lined): # expr_statement
         t[0] = Statement(t[1])
     else:
         t[0] = t[1]
+    t[0].set_line(t.lineno(1))
 
 def p_return_statement(t):
     '''return_statement : RETURN expr SEMICOLON'''
@@ -470,6 +449,7 @@ def p_iteration_statement_02(t):
 def p_selection_statement_01(t):
     '''selection_statement : IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS statement'''
     t[0] = Selection(t[3], t[5], [])
+
 def p_selection_statement_02(t):
     '''selection_statement : IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS statement ELSE statement'''
     t[0] = Selection(t[3], t[5], t[7])
@@ -489,7 +469,7 @@ parser = yacc.yacc(debug=1)
 
 def test_parse():
     input_file = open(sys.argv[1])
-    result = parser.parse(input_file.read())
+    result = parser.parse(input_file.read(), tracking=True)
     print('Done')
     print('')
     print(result)
