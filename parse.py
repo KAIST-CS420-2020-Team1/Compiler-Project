@@ -112,7 +112,6 @@ class Declaration(SingleLined):
         self.base_type = base_type
         self.decl_assigns = decl_assigns
         self.is_const = False
-        # print("\n".join(map(str, self.desugar())))
     def desugar(self):
         return [EachDecl.From(self.base_type, da) for da in self.decl_assigns]
     def __str__(self):
@@ -141,7 +140,7 @@ def p_declarator_assign_01(t):
     '''declarator_assign : declarator'''
     t[0] = t[1]
 def p_declarator_assign_02(t):
-    '''declarator_assign : declarator ASSIGN expression'''
+    '''declarator_assign : declarator ASSIGN expr'''
     t[0] = Assigned(t[1], t[3])
 
 def p_decl_assign_list_01(t):
@@ -280,122 +279,122 @@ class FuncCall:
     def __str__(self):
         return "{}({})".format(self.fn_name, ",".join(map(str, self.args)))
 class ArrayIdx:
-    def __init__(self, name, index):
-        self.name = name
+    def __init__(self, array, index):
+        self.array = array
         self.index = index
     def __str__(self):
-        return "{}.[{}]".format(self.name, self.index)
+        return "{}[{}]".format(self.array, self.index)
 
-def p_expression_statement(t):
-    '''expression_statement : expression SEMICOLON'''
+def p_expr_statement(t):
+    '''expr_statement : expr SEMICOLON'''
     t[0] = t[1]
 
-def p_expression_01(t):
-    '''expression : equality_expression'''
+def p_expr_01(t):
+    '''expr : equal_expr'''
     t[0] = t[1]
-def p_expression_02(t):    
-    '''expression : equality_expression ASSIGN expression
-                  | equality_expression ASSIGN_PLUS expression
-                  | equality_expression ASSIGN_MINUS expression'''
+def p_expr_02(t):    
+    '''expr : equal_expr ASSIGN expr
+                  | equal_expr ASSIGN_PLUS expr
+                  | equal_expr ASSIGN_MINUS expr'''
     t[0] = BinOp(t[1], t[3], t[2])
 
-def p_equality_expression_01(t):
-    '''equality_expression : relational_expression'''
+def p_equal_expr_01(t):
+    '''equal_expr : compare_expr'''
     t[0] = t[1]
 
-def p_equality_expression_02(t):    
-    '''equality_expression : equality_expression EQUAL relational_expression
-                           | equality_expression NOT_EQUAL relational_expression'''
+def p_equal_expr_02(t):    
+    '''equal_expr : equal_expr EQUAL compare_expr
+                           | equal_expr NOT_EQUAL compare_expr'''
     t[0] = BinOp(t[1], t[3], t[2])
-def p_relational_expression_01(t):
-    '''relational_expression : additive_expression'''
+def p_compare_expr_01(t):
+    '''compare_expr : add_expr'''
     t[0] = t[1]
-def p_relational_expression_02(t):
-    '''relational_expression : relational_expression LESS additive_expression
-                             | relational_expression GREATER additive_expression
-                             | relational_expression LESS_EQUAL additive_expression
-                             | relational_expression GREATER_EQUAL additive_expression'''
+def p_compare_expr_02(t):
+    '''compare_expr : compare_expr LESS add_expr
+                             | compare_expr GREATER add_expr
+                             | compare_expr LESS_EQUAL add_expr
+                             | compare_expr GREATER_EQUAL add_expr'''
     t[0] = BinOp(t[1], t[3], t[2])
 
-def p_postfix_expression_01(t):
-    '''postfix_expression : primary_expression'''
+def p_postfix_expr_01(t):
+    '''postfix_expr : prim_expr'''
     t[0] = t[1]
-def p_postfix_expression_02(t):
-    '''postfix_expression : postfix_expression LEFT_PARENTHESIS argument_expression_list RIGHT_PARENTHESIS'''
+def p_postfix_expr_02(t):
+    '''postfix_expr : postfix_expr LEFT_PARENTHESIS arg_expr_list RIGHT_PARENTHESIS'''
     t[0] = FuncCall(t[1], t[3])
-def p_postfix_expression_03(t):
-    '''postfix_expression : postfix_expression LEFT_BRACKET expression RIGHT_BRACKET'''
+def p_postfix_expr_03(t):
+    '''postfix_expr : postfix_expr LEFT_BRACKET expr RIGHT_BRACKET'''
     t[0] = ArrayIdx(t[1], t[3])
-def p_postfix_expression_04(t):
-    '''postfix_expression : postfix_expression PLUS_PLUS'''
+def p_postfix_expr_04(t):
+    '''postfix_expr : postfix_expr PLUS_PLUS'''
     t[0] = UniOp(t[1], '++')
     t[0].postfix = True
-def p_postfix_expression_05(t):
-    '''postfix_expression : postfix_expression MINUS_MINUS'''
+def p_postfix_expr_05(t):
+    '''postfix_expr : postfix_expr MINUS_MINUS'''
     t[0] = UniOp(t[1], '--')
     t[0].postfix = True
 
-def p_argument_expression_list_01(t):
-    '''argument_expression_list : expression'''
+def p_arg_expr_list_01(t):
+    '''arg_expr_list : expr'''
     t[0] = [ t[1] ]
-def p_argument_expression_list_02(t):
-    '''argument_expression_list : argument_expression_list COMMA expression'''
+def p_arg_expr_list_02(t):
+    '''arg_expr_list : arg_expr_list COMMA expr'''
     t[0] = t[1] + [ t[3] ]
-def p_argument_expression_list_03(t):
-    '''argument_expression_list : '''
+def p_arg_expr_list_03(t):
+    '''arg_expr_list : '''
     t[0] = []
 
 
-def p_unary_expression_01(t):
-    '''unary_expression : postfix_expression'''
+def p_unary_expr_01(t):
+    '''unary_expr : postfix_expr'''
     t[0] = t[1]
-def p_unary_expression_02(t):
-    '''unary_expression : MINUS unary_expression'''
+def p_unary_expr_02(t):
+    '''unary_expr : MINUS unary_expr'''
     t[0] = UniOp(t[2], '-')
-def p_unary_expression_03(t):
-    '''unary_expression : PLUS unary_expression'''
+def p_unary_expr_03(t):
+    '''unary_expr : PLUS unary_expr'''
     t[0] = t[2]
-def p_unary_expression_04(t):
-    '''unary_expression : MUL unary_expression'''
+def p_unary_expr_04(t):
+    '''unary_expr : MUL unary_expr'''
     t[0] = UniOp(t[2], '*')
-def p_unary_expression_05(t):
-    '''unary_expression : AMPERSAND unary_expression'''
+def p_unary_expr_05(t):
+    '''unary_expr : AMPERSAND unary_expr'''
     t[0] = UniOp(t[2], '&')
-def p_unary_expression_06(t):
-    '''unary_expression : PLUS_PLUS unary_expression'''
+def p_unary_expr_06(t):
+    '''unary_expr : PLUS_PLUS unary_expr'''
     t[0] = UniOp(t[2], '++')
-def p_unary_expression_07(t):
-    '''unary_expression : MINUS_MINUS unary_expression'''
+def p_unary_expr_07(t):
+    '''unary_expr : MINUS_MINUS unary_expr'''
     t[0] = UniOp(t[2], '--')
 
-def p_mult_expression_01(t):
-    '''mult_expression : unary_expression'''
+def p_mult_expr_01(t):
+    '''mult_expr : unary_expr'''
     t[0] = t[1]
-def p_mult_expression_02(t):
-    '''mult_expression : mult_expression MUL unary_expression
-                       | mult_expression DIV unary_expression    
-                       | mult_expression MOD unary_expression'''
+def p_mult_expr_02(t):
+    '''mult_expr : mult_expr MUL unary_expr
+                       | mult_expr DIV unary_expr    
+                       | mult_expr MOD unary_expr'''
     t[0] = BinOp(t[1], t[3], t[2])
 
-def p_additive_expression_01(t):
-    '''additive_expression : mult_expression'''
+def p_add_expr_01(t):
+    '''add_expr : mult_expr'''
     t[0] = t[1]
-def p_additive_expression_02(t):
-    '''additive_expression : additive_expression PLUS mult_expression
-                           | additive_expression MINUS mult_expression'''
+def p_add_expr_02(t):
+    '''add_expr : add_expr PLUS mult_expr
+                           | add_expr MINUS mult_expr'''
     t[0] = BinOp(t[1], t[3], t[2])
 
-def p_primary_expression_01(t):
-    '''primary_expression : ID'''
+def p_prim_expr_01(t):
+    '''prim_expr : ID'''
     t[0] = Identifier(t[1])
-def p_primary_expression_02(t):
-    '''primary_expression : INT_NUM'''
+def p_prim_expr_02(t):
+    '''prim_expr : INT_NUM'''
     t[0] = Const(int(t[1]), Int())
-def p_primary_expression_03(t):
-    '''primary_expression : FLOAT_NUM'''
+def p_prim_expr_03(t):
+    '''prim_expr : FLOAT_NUM'''
     t[0] = Const(float(t[1]), Float())
-def p_primary_expression_04(t):
-    '''primary_expression : LEFT_PARENTHESIS expression RIGHT_PARENTHESIS'''
+def p_prim_expr_04(t):
+    '''prim_expr : LEFT_PARENTHESIS expr RIGHT_PARENTHESIS'''
     t[0] = t[2]
 
 
@@ -447,7 +446,7 @@ class Selection(Lined):
 def p_statement(t):
     '''statement : body
                  | return_statement
-                 | expression_statement
+                 | expr_statement
                  | selection_statement
                  | iteration_statement'''
     if not isinstance(t[1], Lined):
@@ -456,23 +455,23 @@ def p_statement(t):
         t[0] = t[1]
 
 def p_return_statement(t):
-    '''return_statement : RETURN expression SEMICOLON'''
+    '''return_statement : RETURN expr SEMICOLON'''
     t[0] = Statement(t[2])
     t[0].returning = True
 
 
 def p_iteration_statement_01(t):
-    '''iteration_statement : WHILE LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement'''
+    '''iteration_statement : WHILE LEFT_PARENTHESIS expr RIGHT_PARENTHESIS statement'''
     t[0] = Iteration(t[3], t[5])
 def p_iteration_statement_02(t):
-    '''iteration_statement : FOR LEFT_PARENTHESIS expression_statement expression_statement expression RIGHT_PARENTHESIS statement'''
+    '''iteration_statement : FOR LEFT_PARENTHESIS expr_statement expr_statement expr RIGHT_PARENTHESIS statement'''
     t[0] = Iteration(ForDesc(t[3], t[4], t[5]), t[7])
 
 def p_selection_statement_01(t):
-    '''selection_statement : IF LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement'''
+    '''selection_statement : IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS statement'''
     t[0] = Selection(t[3], t[5], [])
 def p_selection_statement_02(t):
-    '''selection_statement : IF LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement ELSE statement'''
+    '''selection_statement : IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS statement ELSE statement'''
     t[0] = Selection(t[3], t[5], t[7])
 
 def p_statement_list_01(t):

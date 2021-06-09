@@ -58,6 +58,9 @@ def get_function_entry(fndecl):
 
 class MainContext:
     def __init__(self, ast):
+        # TODO Same named variable disallowed. Type mismatch(pointer/array nesting level)
+        # TODO L-value
+        # TODO Block -> AST
         # TODO CFG
 
         # Structures
