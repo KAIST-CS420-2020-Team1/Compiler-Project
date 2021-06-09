@@ -29,7 +29,7 @@ class MainContext:
         self.global_table = analysis.get_symbol_table(ast.decls)
         self.func_tables = structure.Function_Table()
         for fndecl in filter(analysis.is_instance(parse.FunctionDefn), ast.decls):
-            # blocks = analysis.desugar_body(fndecl.body)
+            blocks = analysis.desugar_body(fndecl.body)
             # print(blocks)
             entry = analysis.get_function_entry(fndecl)
             self.func_tables.insert(entry[0], entry[1], entry[2], entry[3], entry[4])
