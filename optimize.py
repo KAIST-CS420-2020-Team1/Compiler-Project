@@ -28,7 +28,7 @@ def const_expr_eval(expr):
 def unroll_loop(stmt):
     if(isinstance(stmt, parse.Iteration)):
         desc = stmt.loopDesc
-        body = stmt.body.decls + stmt.body.stmts
+        body = stmt.body.stmts
         # TODO Heuristics for enabling? E.g. when short
         if(isinstance(desc, parse.ForDesc)):
             # TODO Perhaps analyze flow of values

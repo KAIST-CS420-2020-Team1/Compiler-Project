@@ -245,7 +245,7 @@ class Const:
         self.type = type # Int or Float
     def __str__(self):
         return "{}{}".format(self.value, self.type)
-# ++, --, &, *
+# ++, --, &, *, +, -
 class UniOp:
     def __init__(self, operand, op):
         self.op = op

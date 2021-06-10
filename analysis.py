@@ -63,6 +63,9 @@ def check_lvalue(expr):
     elif(isinstance(expr, parse.BinOp)):
         print("operator of {} is not lvalue".format(expr))
         raise ValueError("semantic error")
+    elif(isinstance(expr, parse.Assign)):
+        print("assignment {} is not lvalue".format(expr))
+        raise ValueError("semantic error")
     elif(isinstance(expr, parse.ArrayIdx)):
         check_lvalue(expr.array)
     elif(isinstance(expr, parse.FuncCall)):
@@ -80,9 +83,11 @@ def check_stmt(expr):
             print("illegal constant dereferencing".format(expr))
             raise ValueError("semantic error")
         check_stmt(expr.operand)
+    elif(isinstance(expr, parse.Assign)):
+        check_lvalue(expr.lvalue)
+        check_stmt(expr.lvalue)
+        check_stmt(expr.rvalue)
     elif(isinstance(expr, parse.BinOp)):
-        if(expr.op in ['+=', '-=', '=']): # Assignment
-            check_lvalue(expr.left)
         check_stmt(expr.left)
         check_stmt(expr.right)
     elif(isinstance(expr, parse.ArrayIdx)):
