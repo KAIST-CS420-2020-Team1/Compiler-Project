@@ -6,6 +6,7 @@ import structure
 import stack
 
 # Syntax Analysis with Desugaring
+# Note desugar_ast
 
 def is_instance(cl):
     return lambda x: isinstance(x, cl)
