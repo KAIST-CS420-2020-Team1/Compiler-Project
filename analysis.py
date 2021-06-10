@@ -58,8 +58,7 @@ def desugar_body(body: parse.Body):
 # Desugar mixed statements
 def desugar_line(stmt):
     if(isinstance(stmt, parse.Declaration)):
-        # TODO Ban function call
-        return stmt.desugar()
+        return [ sub for decl in stmt.desugar() for sub in desugar_decl(decl) ]
     elif(isinstance(stmt, parse.Selection)):
         exes, stmt.cond = desugar_expr(stmt.cond)
         for exe in exes:
@@ -102,6 +101,16 @@ def desugar_line(stmt):
 # Can also be used to handle toplevel
 def desugar_lines(lines):
     return list(itertools.chain(*map(desugar_line, lines)))
+
+# Desugar a declaration into mix of expressions and declarations
+def desugar_decl(each: parse.EachDecl):
+    if each.value != None:
+        exes, each.value = desugar_expr(each.value)
+        for exe in exes:
+            exe.set_line(each.line_num)
+        return exes + [ each ]
+    else:
+        return [ each ]
 
 def is_lvalue(expr):
     if(isinstance(expr, parse.Identifier)):
@@ -191,8 +200,8 @@ def as_symbol_entry(each: parse.EachDecl):
 def get_symbol_table(decls: parse.Declaration):
     vars = filter(is_instance(parse.EachDecl), decls)
     vars = map(as_symbol_entry, vars)
-    var_names = map(lambda x: x[0], vars)
-    sym_table = structure.Symbol_Table(stack.ValueTable(var_names))
+    # var_names = map(lambda x: x[0], vars)
+    sym_table = structure.Symbol_Table(None) # ref?
     for var in vars:
         sym_table.insert(var[0], var[1], var[2])
     return sym_table

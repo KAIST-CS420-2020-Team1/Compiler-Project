@@ -23,16 +23,16 @@ def history_str(var_name, history):
 
 class MainContext:
     def __init__(self, ast):
-        # TODO CFG
+        # TODO CFG?
 
         # Structures
         self.global_table = analysis.get_symbol_table(ast.decls)
         self.func_tables = structure.Function_Table()
         for fndecl in filter(analysis.is_instance(parse.FunctionDefn), ast.decls):
             blocks = analysis.desugar_body(fndecl.body)
-            print(blocks)
+            print("{}:\n{}".format(fndecl.declarator, blocks))
             entry = analysis.get_function_entry(fndecl)
-            self.func_tables.insert(entry[0], entry[1], entry[2], entry[3], entry[4])
+            self.func_tables.insert(entry[0], entry[1], entry[2], entry[3], entry[4], stack.ValueTable([]))
 
         # Stacks
         self.val_stack = stack.ValueStack()
