@@ -79,3 +79,11 @@ class CallContext:
 # These stacks are global
 value_stack = ValueStack()
 call_stack = CallStack()
+
+def main(value_table):
+    if(isinstance(value_table, ValueTable)):
+        value_table.allocate_local("hello", 3, 10) # 10> int hello = 3;
+        value_table.allocate_local("done", 2.0, 12) # 12> int done = 2.0;
+        value_table.set_value("hello", 5, 15) # 15> hello = 5;
+        print(value_table.get_value("hello")) # print(hello)
+        value_table.free_local() # Frees existing

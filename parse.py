@@ -257,7 +257,6 @@ class UniOp:
         else:
             return "({}{})".format(self.op, self.operand)
 # +, -, *, /, %
-# =, +=, -=
 # >, >=, <, <=, ==, !=
 class BinOp:
     def __init__(self, left, right, op):

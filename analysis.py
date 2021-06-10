@@ -53,38 +53,37 @@ def desugar_line(line):
 def desugar_lines(lines):
     return list(itertools.chain(*map(desugar_line, lines)))
 
-def check_lvalue(expr):
-    if(isinstance(expr, parse.UniOp)):
-        if(expr.op != '*'):
-            print("operator of {} is not lvalue".format(expr))
-            raise ValueError("semantic error")
-        else:
-            check_lvalue(expr.operand)
+def is_lvalue(expr):
+    if(isinstance(expr, parse.Identifier)):
+        return True
+    elif(isinstance(expr, parse.UniOp)):
+        return expr.op == '*' and is_lvalue(expr.operand)
     elif(isinstance(expr, parse.BinOp)):
-        print("operator of {} is not lvalue".format(expr))
-        raise ValueError("semantic error")
+        return False
     elif(isinstance(expr, parse.Assign)):
-        print("assignment {} is not lvalue".format(expr))
-        raise ValueError("semantic error")
+        return False
     elif(isinstance(expr, parse.ArrayIdx)):
-        check_lvalue(expr.array)
+        return is_lvalue(expr.array)
     elif(isinstance(expr, parse.FuncCall)):
-        print("function call {} is not lvalue".format(expr))
-        raise ValueError("semantic error")
+        return False
     elif(isinstance(expr, parse.Const)):
-        print("constant {} is not lvalue".format(expr))
-        raise ValueError("semantic error")
+        return False
 
 def check_stmt(expr):
     if(isinstance(expr, parse.UniOp)):
         if(expr.op in ['++', '--']): # Changes
-            check_lvalue(expr.operand)
+            if(not is_lvalue(expr.operand)):
+                print("{} is not lvalue".format(expr.operand))
+                raise ValueError("semantic error")
         elif(expr.op == '*' and isinstance(expr.operand, parse.Const)):
             print("illegal constant dereferencing".format(expr))
             raise ValueError("semantic error")
         check_stmt(expr.operand)
     elif(isinstance(expr, parse.Assign)):
-        check_lvalue(expr.lvalue)
+        if(not is_lvalue(expr.lvalue)):
+            print("{} is not lvalue".format(expr.lvalue))
+            raise ValueError("semantic error")
+        is_lvalue(expr.lvalue)
         check_stmt(expr.lvalue)
         check_stmt(expr.rvalue)
     elif(isinstance(expr, parse.BinOp)):
