@@ -162,7 +162,7 @@ def unroll_loop(stmt):
                 return stmt
             operator = desc.iter.op
 
-            # No modification of iterator
+            # No modification of iterator - Need handling on declaration
             for sub in body:
                 if iterator in result_of_expr(sub):
                     return stmt

@@ -1,4 +1,5 @@
 import itertools
+import functools
 
 import parse
 import structure
@@ -22,50 +23,80 @@ class BlockBody:
     def __init__(self, blocks):
         self.blocks = blocks
     def __str__(self):
-        return "\n".join(["[{}]".format(",".join([str(line) for line in block])) for block in self.blocks])
+        return "\n".join([">>> {}".format(", ".join([str(line) for line in block])) for block in self.blocks])
 
 temp_info = TempInfo()
 
 # Representa a function call along with putting it into some ref
-class Fn_Call_Expr:
+# Replaces FuncCall
+class Fn_Call_Stmt(parse.Lined):
     def __init__(self, fn_name, args, store_name):
         self.fn_name = fn_name
         self.args = args
         self.store_name = store_name
+    def __str__(self):
+        return "{} = {}({})".format(self.store_name, self.fn_name, ",".join(map(str, self.args)))
 
 def is_branching(stmt):
-    return isinstance(stmt, parse.Iteration) or isinstance(stmt, parse.Selection)
+    return isinstance(stmt, parse.Iteration) or isinstance(stmt, parse.Selection) or isinstance(stmt, Fn_Call_Stmt)
 
-# Desugars the entire function
-def desugar_ast(ast):
-    pass
+# Desugars the entire AST (for the source code file)
+def desugar_ast(ast: parse.TranslationUnit):
+    top_decls = filter(is_instance(parse.Declaration), ast.decls)
+    fns = filter(is_instance(parse.FunctionDefn), ast.decls)
+    for fn in fns:
+        fn.body = desugar_body(fn.body)
+    return parse.TranslationUnit(desugar_lines(top_decls) + fns)
 
 # Desugars the function body
-def desugar_body(body):
-    # TODO How to take care of function calls in dividing basic blocks
-    # Likely no need to exclude function call itself from basic block
+def desugar_body(body: parse.Body):
     lines = body.stmts
     lines = desugar_lines(lines)
     grouped = list(map(lambda x: list(x[1]), itertools.groupby(lines, key=is_branching)))
     return BlockBody(grouped)
 
 # Desugar mixed statements
-def desugar_line(line):
-    if(isinstance(line, parse.Declaration)):
-        return line.desugar()
-    elif(isinstance(line, parse.Selection)):
-        line.thenB = desugar_body(line.thenB)
-        if line.hasElse:
-            line.elseB = desugar_body(line.elseB)
-        return [line]
-    elif(isinstance(line, parse.Iteration)):
-        line.body = desugar_body(line.body)
-        return [line]
-    elif(isinstance(line, parse.Statement)):
-        check_stmt(line.content)
-        return [line]
+def desugar_line(stmt):
+    if(isinstance(stmt, parse.Declaration)):
+        # TODO Ban function call
+        return stmt.desugar()
+    elif(isinstance(stmt, parse.Selection)):
+        exes, stmt.cond = desugar_expr(stmt.cond)
+        for exe in exes:
+            exe.set_line(stmt.line_num)
+        stmt.thenB = desugar_body(stmt.thenB)
+        if stmt.hasElse:
+            stmt.elseB = desugar_body(stmt.elseB)
+        return exes + [ stmt ]
+    elif(isinstance(stmt, parse.Iteration)):
+        desc = stmt.loopDesc
+        if(isinstance(desc, parse.ForDesc)):
+            exes, res = desugar_expr(desc.init)
+            exe2, res2 = desugar_expr(desc.until)
+            exe3, res3 = desugar_expr(desc.iter)
+            if exe2 != [] or exe3 != []:
+                print("function call in condition/iteration not yet supported, in {}".format(stmt))
+                raise ValueError("semantic error")
+            desc.init = res
+        else:
+            # While only has conditional statement
+            exes = []
+            exe2, res2 = desugar_expr(desc)
+            if exe2 != []:
+                print("function call in condition/iteration not yet supported, in {}".format(stmt))
+                raise ValueError("semantic error")
+        for exe in exes:
+            exe.set_line(stmt.line_num)
+        stmt.body = desugar_body(stmt.body)
+        return exes + [stmt]
+    elif(isinstance(stmt, parse.Statement)):
+        exes, res = desugar_expr(stmt.content)
+        stmt.content = res
+        for exe in exes:
+            exe.set_line(stmt.line_num)
+        return exes + [stmt]
     else:
-        return [line]
+        raise TypeError("Unexpected type", type(stmt))
 
 # Desugar declration into EachDecl inside mixed statements
 # Can also be used to handle toplevel
@@ -115,26 +146,36 @@ def check_stmt(expr):
         for arg in expr.args:
             check_stmt(arg)
 
+
 # Desugars a single expr into tuple of (expr_to_execute, result_to_use)
 def desugar_expr(expr):
+    check_stmt(expr)
     if(isinstance(expr, parse.UniOp)): # Nothing to desugar
-        pass
+        exe, res = desugar_expr(expr.operand)
+        return (exe, parse.UniOp(res, expr.op))
     elif(isinstance(expr, parse.BinOp)):
-        pass
+        exel, resl = desugar_expr(expr.left)
+        exer, resr = desugar_expr(expr.right)
+        return (exel + exer, parse.BinOp(resl, resr, expr.op))
     elif(isinstance(expr, parse.Assign)):
-        # TODO Along with fn_call
-        pass
+        if expr.op == '=' and isinstance(expr.lvalue, parse.Identifier) and isinstance(expr.rvalue, parse.FuncCall):
+            return ([Fn_Call_Stmt(expr.rvalue.fn_name, expr.rvalue.args, expr.lvalue.name)], expr.lvalue)
+        else:
+            exel, resl = desugar_expr(expr.lvalue)
+            exer, resr = desugar_expr(expr.rvalue)
+            return (exel + exer, parse.Assign(resl, resr, expr.op))
     elif(isinstance(expr, parse.ArrayIdx)):
-        pass
+        exel, resl = desugar_expr(expr.array)
+        exer, resr = desugar_expr(expr.index)
+        return (exel + exer, parse.ArrayIdx(resl, resr))
     elif(isinstance(expr, parse.FuncCall)):
-        temp_var = parse.Identifier(TempInfo.next())
-        call = Fn_Call_Expr(expr.fn_name, expr.args, temp_var)
-        
-        pass
+        temp_var = parse.Identifier(temp_info.next())
+        call = Fn_Call_Stmt(expr.fn_name, expr.args, temp_var.name)
+        return ([call], temp_var)
     elif(isinstance(expr, parse.Identifier)):
-        pass
+        return ([], expr)
     elif(isinstance(expr, parse.Const)):
-        pass
+        return ([], expr)
 
 
 # EachDecl into Symbol Entry

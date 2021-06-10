@@ -155,7 +155,7 @@ class Identifier():
     def __init__(self, name):
         self.name = name
     def __str__(self):
-        return self.name
+        return str(self.name)
 
 class Asterisked():
     def __init__(self, base):
@@ -410,7 +410,7 @@ class Statement(Lined):
 
 # While or For loop. Its body is Body
 class Iteration(Lined):
-    # loopDesc: condition for while loop, ForDesc for for loop
+    # loopDesc: condition expression for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
         if not isinstance(body, Body):
             body = Body([], [ body ]) # Single-lined body
