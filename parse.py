@@ -140,14 +140,6 @@ def p_decl_assign_list_02(t):
     t[0] = t[1] + [ t[3] ]
 
 
-def p_decl_list_01(t):
-    '''declaration_list : '''
-    t[0] = []
-def p_decl_list_02(t):
-    '''declaration_list : declaration_list declaration'''
-    t[0] = t[1] + [ t[2] ]
-
-
 class Float():
     def __init__(self):
         self.type = "float"
@@ -227,15 +219,25 @@ def p_parameter_declaration(t):
 
 
 class Body(Lined):
-    def __init__(self, decls, stmts):
-        self.decls = decls
+    def __init__(self, stmts):
         self.stmts = stmts
     def __str__(self):
-        return "\n".join(map(str, self.subs))
+        return "\n".join(map(str, self.stmts))
+
+def p_decl_stmt(t):
+    '''decl_stmt : declaration
+                 | statement'''
+    t[0] = t[1]
+def p_decl_stmt_list_01(t):
+    '''decl_stmt_list : '''
+    t[0] = []
+def p_decl_stmt_list_02(t):
+    '''decl_stmt_list : decl_stmt_list decl_stmt'''
+    t[0] = t[1] + [ t[2] ]
 
 def p_body(t):
-    '''body : LEFT_BRACE declaration_list statement_list RIGHT_BRACE'''
-    t[0] = Body(t[2], t[3])
+    '''body : LEFT_BRACE decl_stmt_list RIGHT_BRACE'''
+    t[0] = Body(t[2])
 
 class Const:
     def __init__(self, value, type):
@@ -251,9 +253,9 @@ class UniOp:
         self.postfix = False
     def __str__(self):
         if(self.postfix):
-            return "({}){}".format(self.operand, self.op)
+            return "({}{})".format(self.operand, self.op)
         else:
-            return "{}({})".format(self.op, self.operand)
+            return "({}{})".format(self.op, self.operand)
 # +, -, *, /, %
 # =, +=, -=
 # >, >=, <, <=, ==, !=
@@ -263,7 +265,16 @@ class BinOp:
         self.left = left
         self.right = right
     def __str__(self):
-        return "{} {} {}".format(self.left, self.op, self.right)
+        return "( {} {} {} )".format(self.left, self.op, self.right)
+
+# =, +=, -=
+class Assign:
+    def __init__(self, lvalue, rvalue, op):
+        self.op = op
+        self.lvalue = lvalue
+        self.rvalue = rvalue
+    def __str__(self):
+        return "( {} {} {} )".format(self.lvalue, self.op, self.rvalue)
 
 class FuncCall:
     def __init__(self, fn_name, args):
@@ -420,9 +431,9 @@ class ForDesc:
 class Selection(Lined):
     def __init__(self, cond, thenB, elseB):
         if not isinstance(thenB, Body):
-            thenB = Body([], [ thenB ]) # Single-lined body
+            thenB = Body([ thenB ]) # Single-lined body
         if elseB != [] and not isinstance(elseB, Body):
-            elseB = Body([], [ elseB ]) # Single-lined body
+            elseB = Body([ elseB ]) # Single-lined body
         self.cond = cond
         self.thenB = thenB
         self.elseB = elseB
@@ -463,12 +474,6 @@ def p_selection_statement_02(t):
     '''selection_statement : IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS statement ELSE statement'''
     t[0] = Selection(t[3], t[5], t[7])
 
-def p_statement_list_01(t):
-    '''statement_list : '''
-    t[0] = []
-def p_statement_list_02(t):
-    '''statement_list : statement_list statement'''
-    t[0] = t[1] + [ t[2] ]
 
 def p_error(t):
     print ("Syntax Error, content: {}".format(t))

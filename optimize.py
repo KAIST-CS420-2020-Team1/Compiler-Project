@@ -3,7 +3,7 @@ import parse
 # Evaluate constant expression before running the code
 def const_expr_eval(expr):
     if(isinstance(expr, parse.UniOp)):
-        # No unitary operation require .
+        # No unitary operation apply on constant
         expr.operand = const_expr_eval(expr.operand)
         return expr
     elif(isinstance(expr, parse.BinOp)):

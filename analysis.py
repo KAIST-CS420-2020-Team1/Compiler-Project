@@ -25,7 +25,7 @@ def is_branching(stmt):
 def desugar_body(body):
     # TODO How to take care of function calls in dividing basic blocks
     # Likely no need to exclude function call itself from basic block
-    lines = body.decls + body.stmts
+    lines = body.stmts
     lines = desugar_lines(lines)
     grouped = list(map(lambda x: list(x[1]), itertools.groupby(lines, key=is_branching)))
     return BlockBody(grouped)
@@ -119,7 +119,7 @@ def get_function_entry(fndecl):
         raise ValueError("{} is not a function", fndecl)
     if(not isinstance(decl.base, parse.Identifier)):
         raise ValueError("{} has complex type signature", fndecl)
-    symbol_table = get_symbol_table(fndecl.body.decls)
+    symbol_table = get_symbol_table(fndecl.body.stmts)
     params = desugar_lines(decl.params) # Reuse to turn it into EachDecl
     p_types = map(lambda x: x.type, params)
     return (decl.base.name, r_type, p_types, fndecl.line_num, symbol_table)
