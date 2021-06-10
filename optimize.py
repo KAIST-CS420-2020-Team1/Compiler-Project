@@ -194,7 +194,3 @@ def unroll_loop(stmt):
 
     return stmt
 
-# Do if time allows
-def condition_simplify(stmt):
-    0
-

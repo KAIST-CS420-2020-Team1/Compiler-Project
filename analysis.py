@@ -9,6 +9,13 @@ import stack
 def is_instance(cl):
     return lambda x: isinstance(x, cl)
 
+class TempInfo:
+    def __init__(self):
+        self.available_id = 0
+    def next(self):
+        id = self.available_id
+        self.available_id = id + 1
+        return id
 
 # Body as list of blocks
 class BlockBody:
@@ -17,9 +24,21 @@ class BlockBody:
     def __str__(self):
         return "\n".join(["[{}]".format(",".join([str(line) for line in block])) for block in self.blocks])
 
+temp_info = TempInfo()
+
+# Representa a function call along with putting it into some ref
+class Fn_Call_Expr:
+    def __init__(self, fn_name, args, store_name):
+        self.fn_name = fn_name
+        self.args = args
+        self.store_name = store_name
 
 def is_branching(stmt):
     return isinstance(stmt, parse.Iteration) or isinstance(stmt, parse.Selection)
+
+# Desugars the entire function
+def desugar_ast(ast):
+    pass
 
 # Desugars the function body
 def desugar_body(body):
@@ -42,7 +61,7 @@ def desugar_line(line):
     elif(isinstance(line, parse.Iteration)):
         line.body = desugar_body(line.body)
         return [line]
-    elif(isinstance(line, parse.Statement)): # For checking 
+    elif(isinstance(line, parse.Statement)):
         check_stmt(line.content)
         return [line]
     else:
@@ -96,9 +115,30 @@ def check_stmt(expr):
         for arg in expr.args:
             check_stmt(arg)
 
+# Desugars a single expr into tuple of (expr_to_execute, result_to_use)
+def desugar_expr(expr):
+    if(isinstance(expr, parse.UniOp)): # Nothing to desugar
+        pass
+    elif(isinstance(expr, parse.BinOp)):
+        pass
+    elif(isinstance(expr, parse.Assign)):
+        # TODO Along with fn_call
+        pass
+    elif(isinstance(expr, parse.ArrayIdx)):
+        pass
+    elif(isinstance(expr, parse.FuncCall)):
+        temp_var = parse.Identifier(TempInfo.next())
+        call = Fn_Call_Expr(expr.fn_name, expr.args, temp_var)
+        
+        pass
+    elif(isinstance(expr, parse.Identifier)):
+        pass
+    elif(isinstance(expr, parse.Const)):
+        pass
+
 
 # EachDecl into Symbol Entry
-def as_symbol_entry(each):
+def as_symbol_entry(each: parse.EachDecl):
     if isinstance(each.type, parse.Arrayed):
         if isinstance(each.type.base, parse.Arrayed):
             raise ValueError("double array is not supported, {}", each.type)
@@ -107,7 +147,7 @@ def as_symbol_entry(each):
         return (each.name, each.type, 1)
 
 # Symbol table from Declaration
-def get_symbol_table(decls):
+def get_symbol_table(decls: parse.Declaration):
     vars = filter(is_instance(parse.EachDecl), decls)
     vars = map(as_symbol_entry, vars)
     var_names = map(lambda x: x[0], vars)
@@ -117,7 +157,7 @@ def get_symbol_table(decls):
     return sym_table
 
 # Get function entry from FunctionDefn
-def get_function_entry(fndecl):
+def get_function_entry(fndecl: parse.FunctionDefn):
     r_type, decl = fndecl.desugar_type_decl()
     if(not isinstance(decl, parse.Fn_Declarator)):
         raise ValueError("{} is not a function", fndecl)
