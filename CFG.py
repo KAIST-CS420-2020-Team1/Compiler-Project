@@ -43,34 +43,35 @@ class Node:
         return self.line_list
 
     def get_line(self, num):
-        return self.block[self.line_list.index(num)]
+        return self.block[num]
 
     def find_prev_branch(self):
         pass
 
     def next_line(self):
-        if len(self.block) == 0:
-            self = self.next_line()
-        return_value = evaluate(self.get_line(self.cursor))
-        if self.cursor < (len(self.block) -1):
-            self.cursor += 1
-            return self
+        node = copy.deepcopy(self)
+        if len(node.block) == 0:
+            node = node.next_line()
+        return_value = evaluate(node.get_line(node.cursor))
+        if node.cursor < (len(node.block) -1):
+            node.cursor += 1
+            return node
         else:
-            if self.branch:
+            if node.branch:
                 # for i, pred in enumerate(self.pred):
                 #     if evaluate(pred):
                 #         next = self.get_next()[i]
                 #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
                 # raise Exception("no true branch")
-                if evaluate(self.pred):
-                    next = self.get_next()[0]
+                if evaluate(node.pred):
+                    next = node.get_next()[0]
                     return next
                 else:
-                    next = self.get_next()[1]
+                    next = node.get_next()[1]
                     return next
             else:
-                if len(self.get_next()) > 0:
-                    next = self.get_next()[0]
+                if len(node.get_next()) > 0:
+                    next = node.get_next()[0]
                     return next
                 else:
                     return None
