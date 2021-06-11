@@ -313,13 +313,14 @@ def eliminate_dead_stmt(out: "set[str]", stmt):
                 eff.set_line(stmt.line_num)
             return effs
     elif isinstance(stmt, parse.EachDecl):
-        if stmt.name in out:
+        if stmt.name in out or stmt.value == None:
             return [ stmt ]
         else:
-            return [ parse.EachDecl(stmt.type, stmt.name)
-                ] + eliminate_dead_stmt(out, stmt.value)
+            decl = parse.EachDecl(stmt.type, stmt.name)
+            decl.set_line(stmt.line_num)
+            return [ decl ] + eliminate_dead_stmt(out, stmt.value)
     elif isinstance(stmt, parse.PrintStmt):
-        pass # Nothing to eliminate!
+        return [ stmt ]
 
 # Eliminate dead code within this and successor nodes. Mutates CFG.
 def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):
