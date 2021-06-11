@@ -2,9 +2,11 @@ import itertools
 import functools
 
 import parse
+import analysis
 import CFG
 
 # Evaluate constant expression before running the code
+# i.e. constant folding
 def const_expr_eval(expr):
     if(isinstance(expr, parse.UniOp)):
         expr.operand = const_expr_eval(expr.operand)
@@ -39,39 +41,40 @@ def used_in_l_value(expr):
     elif isinstance(expr, parse.ArrayIdx):
         return used_in_l_value(expr.array) + used_in_expr(expr.index)
     elif isinstance(expr, parse.Identifier):
-        return [] # Identifier is not used
+        return set() # Identifier is not used
 
 # List of variables used in expr
 def used_in_expr(expr):
     if(isinstance(expr, parse.UniOp)):
-        if expr.op in ['++', '--']:
-            return used_in_l_value(expr.operand)
-        else:
-            return used_in_expr(expr.operand)
+        # left side of ++, -- is used in value
+        return used_in_expr(expr.operand)
     elif(isinstance(expr, parse.BinOp)):
         return used_in_expr(expr.left) + used_in_expr(expr.right)
     elif(isinstance(expr, parse.Assign)):
-        return used_in_l_value(expr.lvalue) + used_in_expr(expr.rvalue)
+        if expr.op == '=':
+            return used_in_l_value(expr.lvalue) + used_in_expr(expr.rvalue)
+        else: # left side of +=, -= is used in value
+            return used_in_expr(expr.lvalue) + used_in_expr(expr.rvalue)
     elif(isinstance(expr, parse.ArrayIdx)):
         return used_in_expr(expr.array) + used_in_expr(expr.index)
     elif(isinstance(expr, parse.FuncCall)):
-        return list(itertools.chain(*map(used_in_expr, expr.args)))
+        return set(itertools.chain(*map(used_in_expr, expr.args)))
     elif(isinstance(expr, parse.Identifier)):
-        return [ expr.name ]
+        return { expr.name }
     elif(isinstance(expr, parse.Const)):
-        return []
+        return set()
 
 
-# List of variables resulted via l-value expr
+# List of variables resulted via l-value expr, at most one result
 def result_in_l_value(expr):
     if isinstance(expr, parse.UniOp): # Always '*'
         return result_in_l_value(expr.operand)
     elif isinstance(expr, parse.ArrayIdx):
         return result_in_l_value(expr.array)
     elif isinstance(expr, parse.Identifier):
-        return [ expr.name ] # Identifier in l-value is resulted
+        return { expr.name } # Identifier in l-value is resulted
 
-# List of variables resulted from expr
+# List of variables resulted(defined/modified) from expr
 def result_of_expr(expr):
     if(isinstance(expr, parse.UniOp)):
         if expr.op in ['++', '--']:
@@ -84,11 +87,11 @@ def result_of_expr(expr):
     elif(isinstance(expr, parse.ArrayIdx)):
         return result_of_expr(expr.array) + result_of_expr(expr.index)
     elif(isinstance(expr, parse.FuncCall)):
-        return list(itertools.chain(*map(result_of_expr, expr.args)))
+        return set(itertools.chain(*map(result_of_expr, expr.args)))
     elif(isinstance(expr, parse.Identifier)):
-        return [] # Identifier is not resulted unless inside l-value
+        return set() # Identifier is not resulted unless inside l-value
     elif(isinstance(expr, parse.Const)):
-        return []
+        return set()
 
 # Substitute ident with to_sub
 def substitute_expr(expr, ident, to_sub):
@@ -102,7 +105,7 @@ def substitute_expr(expr, ident, to_sub):
         return parse.Assign(substitute_expr(expr.lvalue, ident, to_sub), substitute_expr(expr.rvalue, ident, to_sub), expr.op)
     elif(isinstance(expr, parse.ArrayIdx)):
         return parse.ArrayIdx(substitute_expr(expr.array, ident, to_sub), substitute_expr(expr.index, ident, to_sub))
-    elif(isinstance(expr, parse.FuncCall)): # Consider Fn_Call_Stmt
+    elif(isinstance(expr, parse.FuncCall)): # TODO Consider Fn_Call_Stmt
         return list(itertools.chain(*map(functools.partial(substitute_expr, ident=ident, to_sub=to_sub), expr.args)))
     elif(isinstance(expr, parse.Identifier)):
         if expr.name == ident:
@@ -125,7 +128,7 @@ def substitute_stmt(stmt, ident, to_sub):
 UNIT_ITER = 8
 UNROLL_THRESHOLD = 16
 # Unroll loops of pattern: for(i = 0; i < v; i++)
-# TODO Perform on CFG
+# TODO Maybe perform on CFG
 def unroll_loop(stmt):
     if(isinstance(stmt, parse.Iteration)):
         desc = stmt.loopDesc
@@ -214,7 +217,86 @@ def unroll_loop(stmt):
 
     return stmt
 
-# Eliminates the dead code
-# TODO Require CFG
-def dead_code_elimination():
-    pass
+
+# TODO Obtain some kind of "id" for each node, and use a table over it
+# Calculates 'in' and 'out' variables and fills the information within each node
+def calc_in_out(node: CFG.Node):
+    used = set() # Used
+    defed = set() # Defined/Modified
+    # TODO Better tracking of used / defed in a block
+    for stmt in node.block:
+        if isinstance(stmt, parse.Statement):
+            used += used_in_expr(stmt.content)
+            defed += result_of_expr(stmt.content)
+        elif isinstance(stmt, parse.EachDecl):
+            used += used_in_expr(stmt.value)
+            defed += result_of_expr(stmt.value)
+        elif isinstance(stmt, analysis.Fn_Call_Stmt):
+            for arg in stmt.args:
+                used += used_in_expr(arg)
+                defed += result_of_expr(arg)
+        # TODO Consider Iteration and Condition representation
+
+    node.var_in = set()
+    node.var_out = set()
+    for next_node in node.next:
+        # Calculates for sub-nodes
+        calc_in_out(next_node) # TODO Handle loops
+        node.var_out += next_node.var_in
+        node.var_in = used + node.var_out.difference(defed)
+
+# Eliminates simple evaluations without assignments and side-effects
+def eliminate_pure_expr(expr):
+    if(isinstance(expr, parse.UniOp)):
+        if expr.op in ['+', '-', '&']:
+            return eliminate_pure_expr(expr.operand)
+    elif(isinstance(expr, parse.BinOp)):
+        return eliminate_pure_expr(expr.left) + eliminate_pure_expr(expr.right)
+    elif(isinstance(expr, parse.Assign)):
+        return expr # Assignment is not pure
+    elif(isinstance(expr, parse.ArrayIdx)):
+        return expr # Consider array indexing as not pure, may cause exception
+    elif(isinstance(expr, parse.FuncCall)):
+        # Function call is not pure
+        return expr
+    elif(isinstance(expr, parse.Identifier) or isinstance(expr, parse.Const)):
+        return [ ] # Identifier / Constant is pure
+
+# Eliminate dead statement.
+# Dead code is an assignment which results in non-output variables.
+# Currently does not account for stuffs nested inside for complexity reasons
+def eliminate_dead_stmt(out: "set[str]", stmt):
+    if isinstance(stmt, parse.Statement) and not stmt.returning:
+        expr = stmt.content
+        if isinstance(expr, parse.Assign):
+            stmt_out = result_in_l_value(expr.lvalue)
+            if stmt_out.isdisjoint(out):
+                return eliminate_dead_stmt(out, expr.rvalue)
+            else:
+                return [ stmt ]
+        else: # When not assignments
+            effs = list(map(parse.Statement, eliminate_pure_expr(expr)))
+            for eff in effs:
+                eff.set_line(stmt.line_num)
+            return effs
+
+    elif isinstance(stmt, parse.EachDecl):
+        if stmt.name in out:
+            return [ stmt ]
+        else:
+            return [ parse.EachDecl(stmt.type, stmt.name)
+                ] + eliminate_dead_stmt(out, stmt.value)
+
+# Eliminate dead code within this and successor nodes
+def eliminate_dead(node: CFG.Node):
+    mapped = map(functools.partial(eliminate_dead_stmt, node.var_out), node.block)
+    node.block = list(filter(lambda s: s != None, itertools.chain(*mapped)))
+    for next_node in node.next:
+        eliminate_dead(next_node) # TODO Handle loops
+
+# Simple two-pass dead-code elimination
+# Currently, does not eliminate dead code caused by eliminating the previous dead code
+def dead_code_elimination(node: CFG.Node):
+    calc_in_out(node)
+    eliminate_dead(node)
+    

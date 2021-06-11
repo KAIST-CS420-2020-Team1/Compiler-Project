@@ -39,7 +39,9 @@ class Fn_Call_Stmt(parse.Lined):
         return "{} = {}({})".format(self.store_name, self.fn_name, ",".join(map(str, self.args)))
 
 def is_branching(stmt):
-    return isinstance(stmt, parse.Iteration) or isinstance(stmt, parse.Selection) or isinstance(stmt, Fn_Call_Stmt)
+    as_stmt = isinstance(stmt, parse.Iteration) or isinstance(stmt, parse.Selection)
+    as_fn_call = isinstance(stmt, Fn_Call_Stmt) or (isinstance(stmt, parse.Statement) and stmt.returning)
+    return as_stmt or as_fn_call
 
 # Desugars the entire AST (for the source code file)
 def desugar_ast(ast: parse.TranslationUnit):
