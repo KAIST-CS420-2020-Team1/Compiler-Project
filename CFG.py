@@ -150,6 +150,12 @@ def evaluate(expr):
         elif isinstance(expr, parse.FuncCall):
             # some_func(x, y)
             fn_name = expr.fn_name
+            fun_params = function_table.table[fn_name].p_name
+            fun_args = expr.args
+
+            for param, arg in zip(fun_params, fun_args):
+                function_table.table[fn_name].ref_value.set_value(param, evaluate(arg), 1)
+
             if function_table[fn_name].table.return_value == None:
                 call_stack.link(CallContext(fn_name, 1))
             else:
@@ -206,7 +212,7 @@ def generate_graph(ast):
 
                 for p in decl.declarator.params:
                     p_type = p.base_type
-                    p_name = p.decl_assigns[0].name
+                    p_name = p.desugar()[0].name
                     p_types.append(p_type)
                     p_names.append(p_name)
                     symbol_table.insert(p_name, p_type, None)
@@ -258,6 +264,7 @@ def generate_graph(ast):
             for last_node in last_nodes:
                 last_node.insert_next(loop_node)
         elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall):
+            block.append(stmt)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
             for last_node in last_nodes:
@@ -268,12 +275,12 @@ def generate_graph(ast):
             line_list = []
 
             fun_name = stmt.content.fn_name.name
-            fun_args = stmt.content.args
+            # fun_args = stmt.content.args
+            #
+            # fun_params = function_table.table[fun_name].p_name
 
-            fun_params = function_table.table[fun_name].p_name
-
-            for param, arg in zip(fun_params, fun_args):
-                function_table.table[fun_name].ref_value.set_value(param, evaluate(arg), 1)
+            # for param, arg in zip(fun_params, fun_args):
+            #     function_table.table[fun_name].ref_value.set_value(param, evaluate(arg), 1)
 
             body = function_table.table[fun_name].body
 
@@ -282,6 +289,7 @@ def generate_graph(ast):
             last_nodes[0].insert_next(call_node)
             last_nodes = call_last_node
         elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall):
+            block.append(stmt)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
             for last_node in last_nodes:
@@ -291,20 +299,20 @@ def generate_graph(ast):
             block = []
             line_list = []
 
-            fun_name = stmt.content.fn_name.name
-            fun_args = stmt.content.args
+            fun_name = stmt.content.rvalue.fn_name.name
+            # fun_args = stmt.content.rvalue.args
+            #
+            # fun_params = function_table.table[fun_name].p_name
 
-            fun_params = function_table.table[fun_name].p_name
+            # for param, arg in zip(fun_params, fun_args):
+            #     function_table.table[fun_name].ref_value.set_value(param, evaluate(arg), 1)
 
-            for param, arg in zip(fun_params, fun_args):
-                function_table.table[fun_name].ref_value.set_value(param, evaluate(arg), 1)
-
-            body = function_table[fun_name].body
+            body = function_table.table[fun_name].body
 
             call_node, call_last_node = generate_graph(body)
 
             last_nodes[0].insert_next(call_node)
-            last_nodes = [call_last_node]
+            last_nodes = call_last_node
             block = [stmt]
         else:  # if branch
             pred = get_pred(stmt)
