@@ -110,7 +110,7 @@ def desugar_line(stmt):
                 exe.set_line(stmt.line_num)
             return exes + [stmt]
         else:
-            return stmt
+            return [ stmt ]
     else:
         raise TypeError("Unexpected type", type(stmt))
 
