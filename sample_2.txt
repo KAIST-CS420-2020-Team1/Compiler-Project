@@ -1,5 +1,10 @@
+int fn_call(int x) {
+    return x + 2;
+}
+
 int main() {
     int i;
+    i = fn_call(5);
     i=1 + 2;
     if (i<5) {
         i = 5;
