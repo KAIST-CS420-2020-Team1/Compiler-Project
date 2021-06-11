@@ -2,6 +2,9 @@ import ply.lex as lex
 import re
 import sys
 
+class Scanner_Error(Exception):
+    pass
+
 tokens = (
     # Storage class specifier
     "EXTERN",
@@ -102,8 +105,11 @@ tokens = (
     "ID",
     "FLOAT_NUM",
     "INT_NUM",
-    #"STRING",
-    #"CHARACTER",
+    "STRING",
+    "CHARACTER",
+
+    # Function
+    "PRINTF",
 )
 
 # type
@@ -147,7 +153,10 @@ identifiers = {
     "typedef" : "TYPEDEF",
 
     # Operators
-    "sizeof" : "SIZEOF"
+    "sizeof" : "SIZEOF",
+
+    # Function
+    "printf" : "PRINTF"
 }
 
 # Operators
@@ -214,13 +223,36 @@ def t_ID(token):
     return token
 
 def t_FLOAT_NUM(token):
-    r"[+-]?((\d*\.\d+))([eE][+-]?\d+)?"
+    r"((\d*\.\d+|\d+\.\d*)([eE][+-]?\d+)?)|((\d+)([eE][+-]?\d+))"
     token.value = float(token.value)
     return token
 
 def t_INT_NUM(token):
-    r"[+-]?(([1-9]\d*)|0)"
+    r"(([1-9]\d*)|0)"
     token.value = int(token.value)
+    return token
+
+def t_CHARACTER(token):
+    r"'\w'"
+    return token
+
+def t_STRING(token):
+    r'".*"'
+    check_token = token.value
+    check = re.compile(r"(\\a|\\b|\\f|\\n|\\r|\\t|\\v|\\\\|\\'|\\\")")
+    check_token = check.sub("", check_token)
+
+    if (re.search(r"\\", check_token) != None):
+        print("Syntax error : line", token.lexer.lineno)
+        raise Scanner_Error()
+
+    check_type = re.compile(r"(%d|%f|%%|%c|%i|%s|%o|%u|%x|%X|%e|%E|%g|%G)")
+    check_token = check_type.sub("", check_token)
+
+    if (re.search(r"%", check_token) != None):
+        print("Syntax error : line", token.lexer.lineno)
+        raise Scanner_Error()
+
     return token
     
 def t_SPACE(token):
@@ -232,8 +264,8 @@ def t_COMMENT(token):
     token.lexer.lineno += token.value.count("\n")
 
 def t_error(token):
-    # Error handling should be implemented!
-    print("Error in line %d", token.lexer.lineno)
+    print("Syntax error : line", token.lexer.lineno)
+    raise Scanner_Error()
 
 def lex_scanner():
     input_file = open(sys.argv[1])
