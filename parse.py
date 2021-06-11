@@ -413,7 +413,7 @@ class Iteration(Lined):
     # loopDesc: condition expression for while loop, ForDesc for for loop
     def __init__(self, loopDesc, body):
         if not isinstance(body, Body):
-            body = Body([], [ body ]) # Single-lined body
+            body = Body([ body ]) # Single-lined body
         self.loopDesc = loopDesc
         self.body = body
     def __str__(self):
@@ -480,7 +480,7 @@ def p_error(t):
     elif isinstance(t, lex.LexToken):
         print ("Syntax Error, line: {}, content: {}".format(t.lineno, t))
     else:
-        print ("Syntx Error, content: {}")
+        print ("Syntx Error, content: {}".format(t)) # Not able to perform..
     raise ParseError()
 
 parser = yacc.yacc(debug=1)
