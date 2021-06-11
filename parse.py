@@ -462,10 +462,15 @@ def p_statement(t):
         t[0] = t[1]
     t[0].set_line(t.lineno(1))
 
-def p_print_statement(t):
+def p_print_statement_01(t):
     '''print_statement : PRINTF LEFT_PARENTHESIS STRING COMMA expr RIGHT_PARENTHESIS SEMICOLON'''
     t[0] = PrintStmt(t[3], t[5])
     t[0].set_line(t.lineno(1))
+def p_print_statement_02(t):
+    '''print_statement : PRINTF LEFT_PARENTHESIS STRING RIGHT_PARENTHESIS SEMICOLON'''
+    t[0] = PrintStmt(t[3], None)
+    t[0].set_line(t.lineno(1))
+
 
 def p_return_statement(t):
     '''return_statement : RETURN expr SEMICOLON'''

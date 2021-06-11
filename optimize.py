@@ -238,24 +238,22 @@ class OptimData:
 
 # Calculates 'in' and 'out' variables and fills the information within each node
 # For now, it does in basic-block basis, so it does not track definitions and usage.
-def calc_in_out(store: "dict[(str, int), OptimData]", node: CFG.Node):
+def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
     nst = store[node.id]
     if not nst.initialized: # Updates the used/defined
         used = set() # Used
         defed = set() # Defined/Modified
-        data = OptimData()
-        for i in range(len(node.block)):
-            stmt = node.block[i]
+        for stmt in node.block:
             if isinstance(stmt, parse.Statement):
-                data.used = used_in_expr(stmt.content)
-                data.defed = result_of_expr(stmt.content)
+                used += used_in_expr(stmt.content)
+                defed += result_of_expr(stmt.content)
             elif isinstance(stmt, parse.EachDecl):
-                data.used = used_in_expr(stmt.value)
-                data.defed = result_of_expr(stmt.value)
+                used += used_in_expr(stmt.value)
+                defed += result_of_expr(stmt.value)
             elif isinstance(stmt, analysis.Fn_Call_Stmt):
                 for arg in stmt.args:
-                    data.used = used_in_expr(arg)
-                    data.defed = result_of_expr(arg)
+                    used += used_in_expr(arg)
+                    defed += result_of_expr(arg)
         used += used_in_expr(node.pred)
         defed += result_of_expr(node.pred)
 
