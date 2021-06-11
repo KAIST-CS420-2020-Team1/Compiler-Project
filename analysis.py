@@ -60,8 +60,9 @@ def desugar_ast(ast: parse.TranslationUnit):
 def desugar_body(body: parse.Body):
     lines = body.stmts
     lines = desugar_lines(lines)
-    grouped = list(map(lambda x: list(x[1]), itertools.groupby(lines, key=is_branching)))
-    return BlockBody(grouped)
+    #grouped = list(map(lambda x: list(x[1]), itertools.groupby(lines, key=is_branching)))
+    #return BlockBody(grouped)
+    return parse.Body(lines)
 
 # Desugar mixed statements
 def desugar_line(stmt):

@@ -40,7 +40,7 @@ def const_eval_in_stmt(stmt):
         stmt.content = const_expr_eval(stmt.content)
     elif isinstance(stmt, parse.EachDecl) and stmt.value != None:
         stmt.value = const_expr_eval(stmt.value)
-    # Otherwise(loops) it is handled in CFG-> No change
+    # Otherwise(loops) it is handled in CFG-> No change (or print statement)
     return stmt
 
 
@@ -256,6 +256,9 @@ def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
                 for arg in stmt.args:
                     used += used_in_expr(arg)
                     defed += result_of_expr(arg)
+            elif isinstance(stmt, parse.PrintStmt):
+                used += used_in_expr(stmt.value)
+                defed += result_of_expr(stmt.value)
         used += used_in_expr(node.pred)
         defed += result_of_expr(node.pred)
 
