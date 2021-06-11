@@ -11,6 +11,8 @@ def const_expr_eval(expr):
     if(isinstance(expr, parse.UniOp)):
         expr.operand = const_expr_eval(expr.operand)
         if(isinstance(expr.operand, parse.Const)):
+            if expr.op == '.':
+                pass
             # TODO utility for running expression
             pass
         return expr

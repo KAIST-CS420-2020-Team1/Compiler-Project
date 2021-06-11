@@ -217,6 +217,7 @@ def p_parameter_list_04(t):
 def p_parameter_declaration(t):
     '''parameter_declaration : type_specifier declarator'''
     t[0] = Declaration(t[1], [ t[2] ])
+    t[0].set_line(t.lineno(1))
 
 
 class Body(Lined):
