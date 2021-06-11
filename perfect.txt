@@ -19,7 +19,7 @@ void main()
  			if (rem == 0) sum += j;
  			++j;
  		}
- 		if (i == sum) write(i);
+ 		if (i == sum) printf("%d\n" , i);
  		++i;
  	}
 	place[1] = 3 * 1;
