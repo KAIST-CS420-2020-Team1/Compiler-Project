@@ -82,7 +82,7 @@ def desugar_line(stmt):
             exe2, res2 = desugar_expr(stmt.line_num, desc.until)
             exe3, res3 = desugar_expr(stmt.line_num, desc.iter)
             if exe2 != [] or exe3 != []:
-                print("function call in condition/iteration not yet supported, in {}".format(stmt))
+                print("line {}: function call in condition/iteration not yet supported, in {}".format(stmt.line_num, stmt))
                 raise ValueError("semantic error")
             desc.init = res
         else:
@@ -90,7 +90,7 @@ def desugar_line(stmt):
             exes = []
             exe2, res2 = desugar_expr(stmt.line_num, desc)
             if exe2 != []:
-                print("function call in condition/iteration not yet supported, in {}".format(stmt))
+                print("line {}: function call in condition/iteration not yet supported, in {}".format(stmt.line_num, stmt))
                 raise ValueError("semantic error")
         for exe in exes:
             exe.set_line(stmt.line_num)
