@@ -45,6 +45,11 @@ def is_branching(stmt):
 def desugar_ast(ast: parse.TranslationUnit):
     top_decls = filter(is_instance(parse.Declaration), ast.decls)
     fns = filter(is_instance(parse.FunctionDefn), ast.decls)
+    desugar_tdecls = desugar_lines(top_decls)
+    for decl in desugar_tdecls:
+        if decl.value != None and not isinstance(decl.value, parse.Const):
+            print('Nonconstant value {} not allowed in top level declarations', decl.value)
+            raise ValueError('semantic error')
     for fn in fns:
         fn.body = desugar_body(fn.body)
     return parse.TranslationUnit(desugar_lines(top_decls) + fns)
