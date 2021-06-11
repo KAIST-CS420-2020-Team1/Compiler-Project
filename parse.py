@@ -148,6 +148,11 @@ class Int():
         self.type = "int"
     def __str__(self):
         return "int"
+class Void():
+    def __init__(self):
+        self.type = "void"
+    def __str__(self):
+        return "void"
 
 class Identifier():
     def __init__(self, name):
@@ -181,7 +186,7 @@ def p_type_specifier_02(t):
     t[0] = Float()
 def p_type_specifier_03(t):
     '''type_specifier : VOID'''
-    t[0] = []
+    t[0] = Void()
 
 def p_declarator_01(t):
     '''declarator : direct_declarator'''
