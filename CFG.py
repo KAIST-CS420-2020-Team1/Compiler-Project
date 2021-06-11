@@ -1,5 +1,6 @@
 import parse
 import operator
+import copy
 from stack import *
 from structure import *
 
@@ -18,6 +19,7 @@ class Node:
         self.block = block
         self.pred = pred
         self.line_list = line_list
+        self.cursor = 0
 
         self.branch = False
 
@@ -46,10 +48,11 @@ class Node:
     def find_prev_branch(self):
         pass
 
-    def next_line(self, cur):
-        eval(self.get_line(cur))
-        if cur != max(self.get_line_list()):
-            return self, self.get_line(cur+1), cur+1
+    def next_line(self):
+        evaluate(self.get_line(self.cursor))
+        if self.cursor < (len(self.block) -1):
+            self.cursor += 1
+            return self
         else:
             if self.branch:
                 # for i, pred in enumerate(self.pred):
@@ -59,13 +62,13 @@ class Node:
                 # raise Exception("no true branch")
                 if evaluate(self.pred):
                     next = self.get_next()[0]
-                    return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
+                    return next
                 else:
                     next = self.get_next()[1]
-                    return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
+                    return next
             else:
                 next = self.get_next()[0]
-                return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
+                return next
 
 
 def binop(op, lhs, rhs):
@@ -76,8 +79,8 @@ def binop(op, lhs, rhs):
 def evaluate(expr):
     cur_fun_name = call_stack.called[0].name
     cur_fun_table = function_table.table[cur_fun_name]
-    cur_symbol_table = cur_fun_table.table.ref_sym
-    cur_value_table = cur_fun_table.table.ref_val
+    cur_symbol_table = cur_fun_table.ref_sym
+    cur_value_table = cur_fun_table.ref_value
 
     if isinstance(expr, parse.Statement) and expr.returning:
         # return something;
@@ -109,22 +112,24 @@ def evaluate(expr):
             function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table)
         elif isinstance(expr, parse.Declaration):
             variables = expr.decl_assigns
-            var_type = expr.base_type
+            var_type = expr.base_type.type
             # int a; no declaration with init value.
             for variable in variables:
-                cur_value_table.add(variable, var_type, None)
+                var_name = variable.name
+                cur_symbol_table.insert(var_name, var_type, 1)
+                cur_value_table.allocate_local(var_name, None, 1)
             return None
         elif isinstance(expr, parse.Assign):
             # a = 2;
-            variable = expr.left
-            op = expr.op
+            var_name = expr.left.name
+            _op = expr.op
             value = evaluate(expr.right)
             # type check needed
-            cur_value_table.update(variable, value)
+            cur_value_table.set_value(var_name, value, 1)
             return None
         elif isinstance(expr, parse.Identifier):
             # variable: a
-            return cur_value_table.find(expr.name)
+            return cur_value_table.get_value(expr.name)
         elif isinstance(expr, parse.Const):
             # const: 3
             return expr.value
@@ -182,43 +187,47 @@ def generate_graph(ast):
     block = []
     line_list = []
     pred = []
-    root = Node(block, line_list, pred)
+    root = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
     last_nodes = [root]
-    body = ast
 
     if isinstance(ast, parse.TranslationUnit):
         for decl in ast.decls:
-            fun_name = decl.declarator.base
-            fun_type = decl.r_type
-            params = []
-            p_types = []
+            if isinstance(decl, parse.FunctionDefn):
+                fun_name = decl.declarator.base.name
+                fun_type = decl.r_type.type
+                params = []
+                p_types = []
 
-            symbol_table = Symbol_Table(None)
-            value_table = ValueTable([])
+                symbol_table = Symbol_Table(None)
+                value_table = ValueTable()
 
-            for p in decl.declarator.params:
-                p_type = p.base_type
-                p_name = p.decl_assigns
-                p_types.append(p_type)
-                symbol_table.insert(p_name, p_type, None)
+                for p in decl.declarator.params:
+                    p_type = p.base_type
+                    p_name = p.decl_assigns
+                    p_types.append(p_type)
+                    symbol_table.insert(p_name, p_type, None)
 
-            body = decl.body
+                body = decl.body
 
-            function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table, value_table)
-            body = ast.decls[0].body
+                function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table, value_table)
+                if fun_name == 'main':
+                    ast = body
+                    call_stack.link(CallContext(fun_name, 1))
+            else:
+                pass
 
     # if isinstance(expr, parse.TranslationUnit):
     #     body = function_table.find('main')
     # else:
     #     body = ast
 
-    for stmt in body.stmts:
+    for stmt in ast.stmts:
         if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration):
             block.append(stmt)
             # line_list.append(line)
         elif isinstance(stmt, parse.Iteration):
             pred = get_pred(stmt)  # [true_pred, false_pred]
-            node = Node(block, line_list, pred)
+            node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
             for last_node in last_nodes:
                 last_node.insert_next(node)
@@ -226,7 +235,7 @@ def generate_graph(ast):
 
             block = []
             line_list = []
-            pred = []
+
             branch_last_node = []
 
             # for br in get_branch(stmt):  # br = body
@@ -237,16 +246,16 @@ def generate_graph(ast):
             body = stmt.body
             loop_node, loop_last_node = generate_graph(body)
 
-            loop_end_node = Node([], [], pred)
+            loop_end_node = Node([], [], copy.deepcopy(pred))
             loop_last_node[0].insert_next(loop_end_node)
-
+            last_nodes.append(loop_end_node)
+            pred = []
             for last_node in last_nodes:
                 last_node.insert_next(loop_node)
-            last_nodes.append(loop_end_node)
 
         else:  # if branch
             pred = get_pred(stmt)
-            node = Node(block, line_list, pred)
+            node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
             for last_node in last_nodes:
                 last_node.insert_next(node)
@@ -261,10 +270,12 @@ def generate_graph(ast):
                 br_node, br_last_node = generate_graph(br)  # for nested branch
                 last_nodes[0].insert_next(br_node)
                 br_last_nodes += br_last_node
+            if len(get_branch(stmt)) < 2:
+                br_last_nodes += last_nodes
             last_nodes = br_last_nodes
 
-    node = Node(block, line_list, pred)
+    node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
     for last_node in last_nodes:
         last_node.insert_next(node)
     last_nodes = [node]
-    return root, last_nodes
+    return root.get_next()[0], last_nodes
