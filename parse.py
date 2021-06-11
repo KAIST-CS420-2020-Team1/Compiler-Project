@@ -1,9 +1,9 @@
+import ply.lex as lex
 import ply.yacc as yacc
 import scanner
 import sys
 
 # TODO printf
-# TODO break, continue
 
 tokens = scanner.tokens
 
@@ -299,7 +299,7 @@ def p_expr_02(t):
     '''expr : equal_expr ASSIGN expr
                   | equal_expr ASSIGN_PLUS expr
                   | equal_expr ASSIGN_MINUS expr'''
-    t[0] = BinOp(t[1], t[3], t[2])
+    t[0] = Assign(t[1], t[3], t[2])
 
 def p_equal_expr_01(t):
     '''equal_expr : compare_expr'''
@@ -475,7 +475,12 @@ def p_selection_statement_02(t):
 
 
 def p_error(t):
-    print ("Syntax Error, content: {}".format(t))
+    if isinstance(t, Lined):
+        print ("Syntax Error, line: {}, content: {}".format(t.line_num, t))
+    elif isinstance(t, lex.LexToken):
+        print ("Syntax Error, line: {}, content: {}".format(t.lineno, t))
+    else:
+        print ("Syntx Error, content: {}")
     raise ParseError()
 
 parser = yacc.yacc(debug=1)
