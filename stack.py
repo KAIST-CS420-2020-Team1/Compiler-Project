@@ -55,7 +55,7 @@ class ValueStack:
 
     # Sets the value
     def set_value(self, address, value, line):
-        entry = self.__get__(self, address)
+        entry = self.__get__(address)
         entry["value"] = value
         entry["history"] = entry["history"] + [(value, line)]
 
