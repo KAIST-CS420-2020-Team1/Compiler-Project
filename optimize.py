@@ -256,7 +256,7 @@ def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
                 for arg in stmt.args:
                     used += used_in_expr(arg)
                     defed += result_of_expr(arg)
-            elif isinstance(stmt, parse.PrintStmt):
+            elif isinstance(stmt, parse.PrintStmt) and stmt.value != None:
                 used += used_in_expr(stmt.value)
                 defed += result_of_expr(stmt.value)
         used += used_in_expr(node.pred)
@@ -318,6 +318,8 @@ def eliminate_dead_stmt(out: "set[str]", stmt):
         else:
             return [ parse.EachDecl(stmt.type, stmt.name)
                 ] + eliminate_dead_stmt(out, stmt.value)
+    elif isinstance(stmt, parse.PrintStmt):
+        pass # Nothing to eliminate!
 
 # Eliminate dead code within this and successor nodes. Mutates CFG.
 def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):

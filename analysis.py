@@ -20,6 +20,7 @@ class TempInfo:
         return id
 
 # Body as list of blocks
+# NOTE Not used
 class BlockBody:
     def __init__(self, blocks):
         self.blocks = blocks
