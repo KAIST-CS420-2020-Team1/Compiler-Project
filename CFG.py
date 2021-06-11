@@ -74,15 +74,16 @@ def binop(op, lhs, rhs):
 
 
 def evaluate(expr):
-    cur_fun_table = call_stack.ret()
-    cur_symbol_table = cur_fun_table.table.ref
-    cur_value_table = cur_fun_table.get_value_table()
+    cur_fun_name = call_stack.called[0].name
+    cur_fun_table = function_table.table[cur_fun_name]
+    cur_symbol_table = cur_fun_table.table.ref_sym
+    cur_value_table = cur_fun_table.table.ref_val
 
     if isinstance(expr, parse.Statement) and expr.returning:
         # return something;
         return_value = evaluate(expr.content)
-        call_stack.pop()
-        cur_symbol_table = function_table.get_symbom_table(some_func)
+        call_stack.ret()
+        # cur_symbol_table = function_table.get_symbom_table(some_func)
         return return_value
     else:
         if isinstance(expr, parse.Statement):
@@ -95,6 +96,7 @@ def evaluate(expr):
             p_types = []
 
             symbol_table = Symbol_Table(None)
+            value_table = ValueTable()
 
             for p in expr.declarator.params:
                 p_type = p.base_type
@@ -182,12 +184,29 @@ def generate_graph(ast):
     pred = []
     root = Node(block, line_list, pred)
     last_nodes = [root]
-    for decl in ast.decls:
-        evaluate(decl)
-        pass
+    body = ast
 
-    body = None
-    body = ast.decls[0].body
+    if isinstance(ast, parse.TranslationUnit):
+        for decl in ast.decls:
+            fun_name = decl.declarator.base
+            fun_type = decl.r_type
+            params = []
+            p_types = []
+
+            symbol_table = Symbol_Table(None)
+            value_table = ValueTable([])
+
+            for p in decl.declarator.params:
+                p_type = p.base_type
+                p_name = p.decl_assigns
+                p_types.append(p_type)
+                symbol_table.insert(p_name, p_type, None)
+
+            body = decl.body
+
+            function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table, value_table)
+            body = ast.decls[0].body
+
     # if isinstance(expr, parse.TranslationUnit):
     #     body = function_table.find('main')
     # else:

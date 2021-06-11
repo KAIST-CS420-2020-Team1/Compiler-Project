@@ -2,12 +2,12 @@ class Function_Table:
     def __init__(self):
         self.table = {}
 
-    def insert(self, f_name, r_type, p_type, line, ref_sym, ref_val):
+    def insert(self, f_name, r_type, p_type, line, body, ref_sym, ref_val):
         if (f_name in self.table.keys()):
             print("Error")
             return False
         else:
-            f_new = Function_Entry(r_type, p_type, line, ref_sym, ref_val)
+            f_new = Function_Entry(r_type, p_type, line, body, ref_sym, ref_val)
             self.table[f_name] = f_new
             return True
 
@@ -19,10 +19,11 @@ class Function_Table:
             return False
 
 class Function_Entry:
-    def __init__(self, r_type, p_type, line, ref_sym, ref_val):
+    def __init__(self, r_type, p_type, line, body, ref_sym, ref_val):
         self.r_type = r_type
         self.p_type = p_type
         self.line = line
+        self.body = body
         self.ref_sym = ref_sym
         self.ref_value = ref_val
 
@@ -57,7 +58,8 @@ class Symbol_Entry:
 def main():
     f_table = Function_Table()
     s_table = Symbol_Table(f_table)
-    f_table.insert("f", "a", "b", 1, s_table, s_table)
+    body = ["a", "b"]
+    f_table.insert("f", "a", "b", 1, body, s_table, s_table)
     print(f_table.delete("f"))
     print(f_table.delete("f"))
 
