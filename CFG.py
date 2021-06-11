@@ -52,7 +52,7 @@ class Node:
         node = copy.deepcopy(self)
         if len(node.block) == 0:
             node = node.next_line()
-        return_value = evaluate(node.get_line(node.cursor))
+        return_value = evaluate(0, node.get_line(node.cursor))
         if node.cursor < (len(node.block) -1):
             node.cursor += 1
             return node
@@ -63,7 +63,7 @@ class Node:
                 #         next = self.get_next()[i]
                 #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
                 # raise Exception("no true branch")
-                if evaluate(node.pred):
+                if evaluate(0, node.pred): # Ideally, substitution should not be here
                     next = node.get_next()[0]
                     return next
                 else:
@@ -82,7 +82,7 @@ def binop(op, lhs, rhs):
     return operations[op](lhs, rhs)
 
 
-def evaluate(expr):
+def evaluate(line, expr):
     cur_fun_name = call_stack.called[0].name
     cur_fun_table = function_table.table[cur_fun_name]
     cur_symbol_table = cur_fun_table.ref_sym
@@ -90,12 +90,14 @@ def evaluate(expr):
 
     if isinstance(expr, parse.Statement) and expr.returning:
         # return something;
-        return_value = evaluate(expr.content)
+        return_value = evaluate(expr.line_num, expr.content)
         cur_fun_table.return_value = return_value
+        call_stack.ret()
         # cur_symbol_table = function_table.get_symbom_table(some_func)
         return None
     else:
         if isinstance(expr, parse.Statement):
+            line = expr.line_num
             expr = expr.content
 
         # if isinstance(expr, parse.FunctionDefn):
@@ -129,12 +131,12 @@ def evaluate(expr):
             # a = 2;
             var_name = expr.lvalue.name
             _op = expr.op
-            value = evaluate(expr.rvalue)
+            value = evaluate(line, expr.rvalue)
             # type check needed
 
             #
             if value != None:
-                cur_value_table.set_value(var_name, value, expr.line_num)
+                cur_value_table.set_value(var_name, value, line)
             return None
         elif isinstance(expr, parse.Identifier):
             # variable: a
@@ -144,13 +146,13 @@ def evaluate(expr):
             return expr.value
         elif isinstance(expr, parse.BinOp):
             # a + b
-            lhs = evaluate(expr.left)
-            rhs = evaluate(expr.right)
+            lhs = evaluate(line, expr.left)
+            rhs = evaluate(line, expr.right)
             op = expr.op
             return binop(op, lhs, rhs)
         elif isinstance(expr, parse.UniOp):
             # only a++?
-            operand = evaluate(expr.operand)
+            operand = evaluate(line, expr.operand)
             # op = expr.op
             return binop('+', operand, 1)
         elif isinstance(expr, parse.FuncCall):
@@ -160,10 +162,10 @@ def evaluate(expr):
             fun_args = expr.args
 
             for param, arg in zip(fun_params, fun_args):
-                function_table.table[fn_name].ref_value.set_value(param, evaluate(arg), expr.line_num)
+                function_table.table[fn_name].ref_value.set_value(param, evaluate(line, arg), line)
 
             if function_table.table[fn_name].return_value == None:
-                call_stack.link(CallContext(fn_name, 1))
+                call_stack.link(CallContext(fn_name, line))
             else:
                 return_value = function_table.table[fn_name].return_value
                 function_table.table[fn_name].return_value = None
@@ -173,9 +175,9 @@ def evaluate(expr):
             return_value = None
             for stmt in expr.stmts:
                 if stmt.returning:
-                    return_value = evaluate(stmt)
+                    return_value = evaluate(stmt.line_num, stmt)
                 else:
-                    evaluate(stmt)
+                    evaluate(stmt.line_num, stmt)
             return return_value
     return None
 
