@@ -68,7 +68,7 @@ def desugar_line(stmt):
     if(isinstance(stmt, parse.Declaration)):
         return [ sub for decl in stmt.desugar() for sub in desugar_decl(decl) ]
     elif(isinstance(stmt, parse.Selection)):
-        exes, stmt.cond = desugar_expr(stmt.cond)
+        exes, stmt.cond = desugar_expr(stmt.line_num, stmt.cond)
         for exe in exes:
             exe.set_line(stmt.line_num)
         stmt.thenB = desugar_body(stmt.thenB)
@@ -78,9 +78,9 @@ def desugar_line(stmt):
     elif(isinstance(stmt, parse.Iteration)):
         desc = stmt.loopDesc
         if(isinstance(desc, parse.ForDesc)):
-            exes, res = desugar_expr(desc.init)
-            exe2, res2 = desugar_expr(desc.until)
-            exe3, res3 = desugar_expr(desc.iter)
+            exes, res = desugar_expr(stmt.line_num, desc.init)
+            exe2, res2 = desugar_expr(stmt.line_num, desc.until)
+            exe3, res3 = desugar_expr(stmt.line_num, desc.iter)
             if exe2 != [] or exe3 != []:
                 print("function call in condition/iteration not yet supported, in {}".format(stmt))
                 raise ValueError("semantic error")
@@ -88,7 +88,7 @@ def desugar_line(stmt):
         else:
             # While only has conditional statement
             exes = []
-            exe2, res2 = desugar_expr(desc)
+            exe2, res2 = desugar_expr(stmt.line_num, desc)
             if exe2 != []:
                 print("function call in condition/iteration not yet supported, in {}".format(stmt))
                 raise ValueError("semantic error")
@@ -97,7 +97,7 @@ def desugar_line(stmt):
         stmt.body = desugar_body(stmt.body)
         return exes + [stmt]
     elif(isinstance(stmt, parse.Statement)):
-        exes, res = desugar_expr(stmt.content)
+        exes, res = desugar_expr(stmt.line_num, stmt.content)
         stmt.content = res
         for exe in exes:
             exe.set_line(stmt.line_num)
@@ -113,7 +113,7 @@ def desugar_lines(lines):
 # Desugar a declaration into mix of expressions and declarations
 def desugar_decl(each: parse.EachDecl):
     if each.value != None:
-        exes, each.value = desugar_expr(each.value)
+        exes, each.value = desugar_expr(each.line_num, each.value)
         for exe in exes:
             exe.set_line(each.line_num)
         return exes + [ each ]
@@ -136,54 +136,54 @@ def is_lvalue(expr):
     elif(isinstance(expr, parse.Const)):
         return False
 
-def check_stmt(expr):
+def check_stmt(line, expr):
     if(isinstance(expr, parse.UniOp)):
         if(expr.op in ['++', '--']): # Changes
             if(not is_lvalue(expr.operand)):
-                print("{} is not lvalue".format(expr.operand))
+                print("line {}: {} is not lvalue".format(line, expr.operand))
                 raise ValueError("semantic error")
         elif(expr.op == '*' and isinstance(expr.operand, parse.Const)):
-            print("illegal constant dereferencing".format(expr))
+            print("line {}: illegal constant dereferencing in {}".format(line, expr))
             raise ValueError("semantic error")
-        check_stmt(expr.operand)
+        check_stmt(line, expr.operand)
     elif(isinstance(expr, parse.Assign)):
         if(not is_lvalue(expr.lvalue)):
-            print("{} is not lvalue".format(expr.lvalue))
+            print("line {}: {} is not lvalue".format(line, expr.lvalue))
             raise ValueError("semantic error")
         is_lvalue(expr.lvalue)
-        check_stmt(expr.lvalue)
-        check_stmt(expr.rvalue)
+        check_stmt(line, expr.lvalue)
+        check_stmt(line, expr.rvalue)
     elif(isinstance(expr, parse.BinOp)):
-        check_stmt(expr.left)
-        check_stmt(expr.right)
+        check_stmt(line, expr.left)
+        check_stmt(line, expr.right)
     elif(isinstance(expr, parse.ArrayIdx)):
-        check_stmt(expr.array)
-        check_stmt(expr.index)
+        check_stmt(line, expr.array)
+        check_stmt(line, expr.index)
     elif(isinstance(expr, parse.FuncCall)):
         for arg in expr.args:
-            check_stmt(arg)
+            check_stmt(line, arg)
 
 
 # Desugars a single expr into tuple of (expr_to_execute, result_to_use)
-def desugar_expr(expr):
-    check_stmt(expr)
+def desugar_expr(line, expr):
+    check_stmt(line, expr)
     if(isinstance(expr, parse.UniOp)): # Nothing to desugar
-        exe, res = desugar_expr(expr.operand)
+        exe, res = desugar_expr(line, expr.operand)
         return (exe, parse.UniOp(res, expr.op))
     elif(isinstance(expr, parse.BinOp)):
-        exel, resl = desugar_expr(expr.left)
-        exer, resr = desugar_expr(expr.right)
+        exel, resl = desugar_expr(line, expr.left)
+        exer, resr = desugar_expr(line, expr.right)
         return (exel + exer, parse.BinOp(resl, resr, expr.op))
     elif(isinstance(expr, parse.Assign)):
         if expr.op == '=' and isinstance(expr.lvalue, parse.Identifier) and isinstance(expr.rvalue, parse.FuncCall):
             return ([Fn_Call_Stmt(expr.rvalue.fn_name, expr.rvalue.args, expr.lvalue.name)], expr.lvalue)
         else:
-            exel, resl = desugar_expr(expr.lvalue)
-            exer, resr = desugar_expr(expr.rvalue)
+            exel, resl = desugar_expr(line, expr.lvalue)
+            exer, resr = desugar_expr(line, expr.rvalue)
             return (exel + exer, parse.Assign(resl, resr, expr.op))
     elif(isinstance(expr, parse.ArrayIdx)):
-        exel, resl = desugar_expr(expr.array)
-        exer, resr = desugar_expr(expr.index)
+        exel, resl = desugar_expr(line, expr.array)
+        exer, resr = desugar_expr(line, expr.index)
         return (exel + exer, parse.ArrayIdx(resl, resr))
     elif(isinstance(expr, parse.FuncCall)):
         temp_var = parse.Identifier(temp_info.next())
@@ -195,6 +195,7 @@ def desugar_expr(expr):
         return ([], expr)
 
 
+# NOTE Not used
 # EachDecl into Symbol Entry
 def as_symbol_entry(each: parse.EachDecl):
     if isinstance(each.type, parse.Arrayed):
@@ -204,6 +205,7 @@ def as_symbol_entry(each: parse.EachDecl):
     else:
         return (each.name, each.type, 1)
 
+# NOTE Not used
 # Symbol table from Declaration
 def get_symbol_table(decls: parse.Declaration):
     vars = filter(is_instance(parse.EachDecl), decls)
@@ -214,6 +216,7 @@ def get_symbol_table(decls: parse.Declaration):
         sym_table.insert(var[0], var[1], var[2])
     return sym_table
 
+# NOTE Not used
 # Get function entry from FunctionDefn
 def get_function_entry(fndecl: parse.FunctionDefn):
     r_type, decl = fndecl.desugar_type_decl()
