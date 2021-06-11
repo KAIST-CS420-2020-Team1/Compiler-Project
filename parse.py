@@ -148,11 +148,6 @@ class Int():
         self.type = "int"
     def __str__(self):
         return "int"
-class Void():
-    def __init__(self):
-        self.type = "void"
-    def __str__(self):
-        return "void"
 
 class Identifier():
     def __init__(self, name):
@@ -186,7 +181,7 @@ def p_type_specifier_02(t):
     t[0] = Float()
 def p_type_specifier_03(t):
     '''type_specifier : VOID'''
-    t[0] = Void()
+    t[0] = []
 
 def p_declarator_01(t):
     '''declarator : direct_declarator'''
@@ -302,17 +297,18 @@ def p_expr_statement(t):
 def p_expr_01(t):
     '''expr : equal_expr'''
     t[0] = t[1]
-def p_expr_02(t):    
+def p_expr_02(t):
     '''expr : equal_expr ASSIGN expr
                   | equal_expr ASSIGN_PLUS expr
                   | equal_expr ASSIGN_MINUS expr'''
     t[0] = Assign(t[1], t[3], t[2])
+    t[0].line_num = t.lineno(1)
 
 def p_equal_expr_01(t):
     '''equal_expr : compare_expr'''
     t[0] = t[1]
 
-def p_equal_expr_02(t):    
+def p_equal_expr_02(t):
     '''equal_expr : equal_expr EQUAL compare_expr
                            | equal_expr NOT_EQUAL compare_expr'''
     t[0] = BinOp(t[1], t[3], t[2])
@@ -382,7 +378,7 @@ def p_mult_expr_01(t):
     t[0] = t[1]
 def p_mult_expr_02(t):
     '''mult_expr : mult_expr MUL unary_expr
-                       | mult_expr DIV unary_expr    
+                       | mult_expr DIV unary_expr
                        | mult_expr MOD unary_expr'''
     t[0] = BinOp(t[1], t[3], t[2])
 

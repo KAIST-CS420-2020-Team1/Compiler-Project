@@ -123,7 +123,7 @@ def evaluate(expr):
             for variable in variables:
                 var_name = variable.name
                 cur_symbol_table.insert(var_name, var_type, 1)
-                cur_value_table.allocate_local(var_name, None, 1)
+                cur_value_table.allocate_local(var_name, None, expr.line_num)
             return None
         elif isinstance(expr, parse.Assign):
             # a = 2;
@@ -134,7 +134,7 @@ def evaluate(expr):
 
             #
             if value != None:
-                cur_value_table.set_value(var_name, value, 1)
+                cur_value_table.set_value(var_name, value, expr.line_num)
             return None
         elif isinstance(expr, parse.Identifier):
             # variable: a
@@ -160,7 +160,7 @@ def evaluate(expr):
             fun_args = expr.args
 
             for param, arg in zip(fun_params, fun_args):
-                function_table.table[fn_name].ref_value.set_value(param, evaluate(arg), 1)
+                function_table.table[fn_name].ref_value.set_value(param, evaluate(arg), expr.line_num)
 
             if function_table.table[fn_name].return_value == None:
                 call_stack.link(CallContext(fn_name, 1))
@@ -222,7 +222,7 @@ def generate_graph(ast):
                     p_types.append(p_type)
                     p_names.append(p_name)
                     symbol_table.insert(p_name, p_type, None)
-                    value_table.allocate_local(p_name, None, 1)
+                    value_table.allocate_local(p_name, None, decl.line_num)
 
                 body = decl.body
 
