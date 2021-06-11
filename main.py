@@ -8,13 +8,11 @@ import structure
 import stack
 import analysis
 
-
 def val_str(value):
     if value == None:
         return 'N/A'
     else:
         return str(value)
-
 
 def history_str(var_name, history):
     if history == []:
@@ -24,11 +22,12 @@ def history_str(var_name, history):
             "{} = {} at line {}".format(var_name, val_str(val), line)
             for (val, line) in history])
 
-
 class MainContext:
     def __init__(self, ast):
         # TODO CFG?
         self.CFG = CFG.generate_graph(ast)
+        self.CFG_pc = self.CFG[0]
+        self.done = 0
 
         self.global_table = analysis.get_symbol_table(ast.decls)
         self.func_tables = CFG.function_table
@@ -39,14 +38,21 @@ class MainContext:
         self.cur_func_table = self.func_tables.table["main"]
         pass
 
-    def cmd_next(self, num=1):
+    def cmd_next(self, num = 1):
         # TODO Runs #num statements
-        cfg_node = self.CFG[0].next_line()
+        cfg_node = self.CFG_pc.next_line()
+        iter = 1
 
-        while (cfg_node != None):
+        while ((cfg_node != None) and (iter < num)):
             cfg_node = cfg_node.next_line()
+            iter += 1
 
-        print("End of program")
+        if (cfg_node == None):
+            print("End of program")
+            self.done = 1
+
+        self.CFG_pc = cfg_node
+
         return
 
     def cmd_print(self, var_name):
@@ -61,8 +67,8 @@ class MainContext:
         if vtable.has_value(var_name):
             print(val_str(vtable.get_value(var_name)))
             return'''
-
-        print("N\A")
+           
+        print("Invisible variable")
         return
 
     def cmd_trace(self, var_name):
@@ -71,7 +77,7 @@ class MainContext:
         if vtable.has_value(var_name):
             print(history_str(var_name, vtable.get_history(var_name)))
             return
-
+       
         '''vtable = self.global_table.ref
         if vtable.has_value(var_name):
             print(history_str(var_name, vtable.get_history(var_name)))
@@ -79,7 +85,6 @@ class MainContext:
 
         print("Invisible variable")
         return
-
 
 if __name__ == '__main__':
     parser = parse.parser
@@ -99,12 +104,15 @@ if __name__ == '__main__':
 
         args = line.split(' ')
         if args[0] == 'next':
-            if len(args) == 1:
-                ctxt.cmd_next()
-            elif args[1].isnumeric():
-                ctxt.cmd_next(int(args[1]))  # Placeholder
+            if (ctxt.done == 0):
+                if len(args) == 1:
+                    ctxt.cmd_next()
+                elif args[1].isnumeric():
+                    ctxt.cmd_next(int(args[1])) # Placeholder
+                else:
+                    print("Incorrect command usage: try 'next[lines]")
             else:
-                print("Incorrect command usage: try 'next[lines]")
+                print("End of program")
         elif args[0] == 'print' and len(args) == 2:
             ctxt.cmd_print(args[1])
         elif args[0] == 'trace' and len(args) == 2:

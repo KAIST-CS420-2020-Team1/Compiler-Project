@@ -67,8 +67,9 @@ class CallStack:
         self.called = [ctxt] + self.called
     # Returns to the parent, returning the context
     def ret(self):
+        ret_ctxt = self.called[0]
         self.called = self.called[1:]
-        return self.called[0]
+        return ret_ctxt
 
 # Calling context. Stores parent function name and line
 class CallContext:
