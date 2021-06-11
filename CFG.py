@@ -155,18 +155,18 @@ def evaluate(expr):
             return binop('+', operand, 1)
         elif isinstance(expr, parse.FuncCall):
             # some_func(x, y)
-            fn_name = expr.fn_name
+            fn_name = expr.fn_name.name
             fun_params = function_table.table[fn_name].p_name
             fun_args = expr.args
 
             for param, arg in zip(fun_params, fun_args):
                 function_table.table[fn_name].ref_value.set_value(param, evaluate(arg), 1)
 
-            if function_table[fn_name].table.return_value == None:
+            if function_table.table[fn_name].return_value == None:
                 call_stack.link(CallContext(fn_name, 1))
             else:
-                return_value = function_table[fn_name].table.return_value
-                function_table[fn_name].table.return_value = None
+                return_value = function_table.table[fn_name].return_value
+                function_table.table[fn_name].return_value = None
                 return return_value
             return None  # ??
         elif isinstance(expr, parse.Body):
