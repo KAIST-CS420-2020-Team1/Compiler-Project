@@ -33,6 +33,15 @@ def const_expr_eval(expr):
     elif(isinstance(expr, parse.Identifier) or isinstance(expr, parse.Const)):
         return expr
 
+def const_eval_in_stmt(stmt):
+    if isinstance(stmt, parse.Statement):
+        stmt.content = const_expr_eval(stmt.content)
+    elif isinstance(stmt, parse.EachDecl) and stmt.value != None:
+        stmt.value = const_expr_eval(stmt.value)
+    # Otherwise(loops) it is handled in CFG-> No change
+    return stmt
+
+
 
 # List of variables used in l-value expr
 def used_in_l_value(expr):
@@ -128,7 +137,7 @@ def substitute_stmt(stmt, ident, to_sub):
 UNIT_ITER = 8
 UNROLL_THRESHOLD = 16
 # Unroll loops of pattern: for(i = 0; i < v; i++)
-# TODO Maybe perform on CFG
+### NOTE: Not yet implemented. Does not work on CFG-basis
 def unroll_loop(stmt):
     if(isinstance(stmt, parse.Iteration)):
         desc = stmt.loopDesc
@@ -217,33 +226,51 @@ def unroll_loop(stmt):
 
     return stmt
 
+class OptimData:
+    def __init__(self):
+        self.used = set()
+        self.defed = set()
+        self.var_in = set()
+        self.var_out = set()
+        self.initialized = False
+        self.visited = False
 
-# TODO Obtain some kind of "id" for each node, and use a table over it
 # Calculates 'in' and 'out' variables and fills the information within each node
-def calc_in_out(node: CFG.Node):
-    used = set() # Used
-    defed = set() # Defined/Modified
-    # TODO Better tracking of used / defed in a block
-    for stmt in node.block:
-        if isinstance(stmt, parse.Statement):
-            used += used_in_expr(stmt.content)
-            defed += result_of_expr(stmt.content)
-        elif isinstance(stmt, parse.EachDecl):
-            used += used_in_expr(stmt.value)
-            defed += result_of_expr(stmt.value)
-        elif isinstance(stmt, analysis.Fn_Call_Stmt):
-            for arg in stmt.args:
-                used += used_in_expr(arg)
-                defed += result_of_expr(arg)
-        # TODO Consider Iteration and Condition representation
+# For now, it does in basic-block basis, so it does not track definitions and usage.
+def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
+    nst = store[node.id]
+    if not nst.initialized: # Updates the used/defined
+        used = set() # Used
+        defed = set() # Defined/Modified
+        for stmt in node.block:
+            if isinstance(stmt, parse.Statement):
+                used += used_in_expr(stmt.content)
+                defed += result_of_expr(stmt.content)
+            elif isinstance(stmt, parse.EachDecl):
+                used += used_in_expr(stmt.value)
+                defed += result_of_expr(stmt.value)
+            elif isinstance(stmt, analysis.Fn_Call_Stmt):
+                for arg in stmt.args:
+                    used += used_in_expr(arg)
+                    defed += result_of_expr(arg)
+        used += used_in_expr(node.pred)
+        defed += result_of_expr(node.pred)
 
-    node.var_in = set()
-    node.var_out = set()
+        # Substitutes
+        nst.used = used
+        nst.defed = defed
+        nst.initialized = True
+
+    var_out = set()
+    nst.visited = True # Pre-mark visited, so lower calls won't call this fn again
+
     for next_node in node.next:
+        if not store[next_node.id].visited: # Does not visit again in loop case
+            calc_in_out(next_node)
         # Calculates for sub-nodes
-        calc_in_out(next_node) # TODO Handle loops
-        node.var_out += next_node.var_in
-        node.var_in = used + node.var_out.difference(defed)
+        var_out += nst.var_in
+    nst.var_out = var_out
+    nst.var_in = used + nst.var_out.difference(defed)
 
 # Eliminates simple evaluations without assignments and side-effects
 def eliminate_pure_expr(expr):
@@ -264,7 +291,7 @@ def eliminate_pure_expr(expr):
 
 # Eliminate dead statement.
 # Dead code is an assignment which results in non-output variables.
-# Currently does not account for stuffs nested inside for complexity reasons
+# Currently does not account for stuffs nested inside for complexity reasons (e.g. inside pred)
 def eliminate_dead_stmt(out: "set[str]", stmt):
     if isinstance(stmt, parse.Statement) and not stmt.returning:
         expr = stmt.content
@@ -279,7 +306,6 @@ def eliminate_dead_stmt(out: "set[str]", stmt):
             for eff in effs:
                 eff.set_line(stmt.line_num)
             return effs
-
     elif isinstance(stmt, parse.EachDecl):
         if stmt.name in out:
             return [ stmt ]
@@ -287,16 +313,39 @@ def eliminate_dead_stmt(out: "set[str]", stmt):
             return [ parse.EachDecl(stmt.type, stmt.name)
                 ] + eliminate_dead_stmt(out, stmt.value)
 
-# Eliminate dead code within this and successor nodes
-def eliminate_dead(node: CFG.Node):
-    mapped = map(functools.partial(eliminate_dead_stmt, node.var_out), node.block)
+# Eliminate dead code within this and successor nodes. Mutates CFG.
+def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):
+    mapped = map(functools.partial(eliminate_dead_stmt, store[node.id].var_out), node.block)
     node.block = list(filter(lambda s: s != None, itertools.chain(*mapped)))
+    store[node.id].visited = True
     for next_node in node.next:
-        eliminate_dead(next_node) # TODO Handle loops
+        if not store[next_node.id].visited:
+            eliminate_dead(store, next_node)
 
 # Simple two-pass dead-code elimination
 # Currently, does not eliminate dead code caused by eliminating the previous dead code
 def dead_code_elimination(node: CFG.Node):
-    calc_in_out(node)
-    eliminate_dead(node)
-    
+    store = dict()
+    store.setdefault(OptimData())
+    calc_in_out(store, node) # First pass
+    for (k, v) in store:
+        v.visited = False
+    calc_in_out(store, node) # Second pass, to detect for loops
+    for (k, v) in store:
+        v.visited = False
+    eliminate_dead(store, node)
+
+
+def const_eval_each(visited:"dict[str, bool]", node: CFG.Node):
+    visited[node.id] = True
+    node.block = list(map(const_eval_in_stmt, node.block))
+    if node.pred != None:
+        node.pred = const_expr_eval(node.pred)
+    for next_node in node.next:
+        if not visited[next_node.id]:
+            const_eval_each(visited, next_node)
+# Constant evaluation in CFG. Mutates CFG
+def const_eval_node(node: CFG.Node):
+    visited = dict()
+    visited.setdefault(False)
+    const_eval_each(visited, node)

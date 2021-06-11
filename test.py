@@ -1,10 +1,8 @@
-import ply.lex as lex
-import ply.yacc as yacc
+import sys
+import parse
+import CFG
 
-# Foo.. idk
-def p_foo(p):
-    'stmt : stmt + stmt'
-    p[0] = p[1] + p[3]
-
-yacc.yacc()
-
+sys.argv = ['parse.py', 'sample.txt']
+result = parse.test_parse()
+graph = CFG.generate_graph(result)
+print(graph)
