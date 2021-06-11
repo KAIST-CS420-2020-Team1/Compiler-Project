@@ -8,10 +8,9 @@ def function_return(callee_val_table):
     return call_stack.ret()
 
 class ValueTable:
-    def __init__(self, local_list):
+    def __init__(self):
         self.table = dict()
-        for local in local_list:
-            self.table[local] = -1 # Invalid address
+        self.table.setdefault(-1)
     # Allocates a local variable
     def allocate_local(self, name, value, line):
         self.table[name] = value_stack.allocate(value, line)
