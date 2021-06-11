@@ -20,6 +20,7 @@ class TempInfo:
         return id
 
 # Body as list of blocks
+# NOTE Not used
 class BlockBody:
     def __init__(self, blocks):
         self.blocks = blocks
@@ -60,8 +61,9 @@ def desugar_ast(ast: parse.TranslationUnit):
 def desugar_body(body: parse.Body):
     lines = body.stmts
     lines = desugar_lines(lines)
-    grouped = list(map(lambda x: list(x[1]), itertools.groupby(lines, key=is_branching)))
-    return BlockBody(grouped)
+    #grouped = list(map(lambda x: list(x[1]), itertools.groupby(lines, key=is_branching)))
+    #return BlockBody(grouped)
+    return parse.Body(lines)
 
 # Desugar mixed statements
 def desugar_line(stmt):
@@ -102,6 +104,15 @@ def desugar_line(stmt):
         for exe in exes:
             exe.set_line(stmt.line_num)
         return exes + [stmt]
+    elif(isinstance(stmt, parse.PrintStmt)):
+        if stmt.value != None:
+            exes, res = desugar_expr(stmt.line_num, stmt.value)
+            stmt.value = res
+            for exe in exes:
+                exe.set_line(stmt.line_num)
+            return exes + [stmt]
+        else:
+            return [ stmt ]
     else:
         raise TypeError("Unexpected type", type(stmt))
 

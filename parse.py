@@ -3,8 +3,6 @@ import ply.yacc as yacc
 import scanner
 import sys
 
-# TODO printf
-
 tokens = scanner.tokens
 
 precedence = (
@@ -212,10 +210,14 @@ def p_parameter_list_02(t):
 def p_parameter_list_03(t):
     '''parameter_list : '''
     t[0] = []
+def p_parameter_list_04(t):
+    '''parameter_list : VOID'''
+    t[0] = []
 
 def p_parameter_declaration(t):
     '''parameter_declaration : type_specifier declarator'''
     t[0] = Declaration(t[1], [ t[2] ])
+    t[0].set_line(t.lineno(1))
 
 
 class Body(Lined):
@@ -440,8 +442,17 @@ class Selection(Lined):
     def __str__(self):
         return "{}> cond[{}] [\n{}\n] [{}]".format(self.line_num, self.cond, self.thenB, self.elseB)
 
+class PrintStmt(Lined):
+    def __init__(self, format, value):
+        self.format = format
+        self.value = value # Value to print
+        pass
+    def __str__(self):
+        return "{}> printf({}, {})".format(self.line_num, self.format, self.value)
+
 def p_statement(t):
     '''statement : body
+                 | print_statement
                  | return_statement
                  | expr_statement
                  | selection_statement
@@ -451,6 +462,16 @@ def p_statement(t):
     else:
         t[0] = t[1]
     t[0].set_line(t.lineno(1))
+
+def p_print_statement_01(t):
+    '''print_statement : PRINTF LEFT_PARENTHESIS STRING COMMA expr RIGHT_PARENTHESIS SEMICOLON'''
+    t[0] = PrintStmt(t[3], t[5])
+    t[0].set_line(t.lineno(1))
+def p_print_statement_02(t):
+    '''print_statement : PRINTF LEFT_PARENTHESIS STRING RIGHT_PARENTHESIS SEMICOLON'''
+    t[0] = PrintStmt(t[3], None)
+    t[0].set_line(t.lineno(1))
+
 
 def p_return_statement(t):
     '''return_statement : RETURN expr SEMICOLON'''
