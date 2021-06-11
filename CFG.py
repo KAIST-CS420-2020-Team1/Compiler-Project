@@ -49,7 +49,7 @@ class Node:
         pass
 
     def next_line(self):
-        evaluate(self.get_line(self.cursor))
+        return_value = evaluate(self.get_line(self.cursor))
         if self.cursor < (len(self.block) -1):
             self.cursor += 1
             return self
@@ -85,32 +85,32 @@ def evaluate(expr):
     if isinstance(expr, parse.Statement) and expr.returning:
         # return something;
         return_value = evaluate(expr.content)
-        call_stack.ret()
+        cur_fun_table.return_value = return_value
         # cur_symbol_table = function_table.get_symbom_table(some_func)
-        return return_value
+        return None
     else:
         if isinstance(expr, parse.Statement):
             expr = expr.content
 
-        if isinstance(expr, parse.FunctionDefn):
-            fun_name = expr.declarator.base
-            fun_type = expr.r_type
-            params = []
-            p_types = []
-
-            symbol_table = Symbol_Table(None)
-            value_table = ValueTable()
-
-            for p in expr.declarator.params:
-                p_type = p.base_type
-                p_name = p.decl_assigns
-                p_types.append(p_type)
-                symbol_table.insert(p_name, p_type, None)
-
-            body = expr.body
-
-            function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table)
-        elif isinstance(expr, parse.Declaration):
+        # if isinstance(expr, parse.FunctionDefn):
+        #     fun_name = expr.declarator.base
+        #     fun_type = expr.r_type
+        #     params = []
+        #     p_types = []
+        #
+        #     symbol_table = Symbol_Table(None)
+        #     value_table = ValueTable()
+        #
+        #     for p in expr.declarator.params:
+        #         p_type = p.base_type
+        #         p_name = p.decl_assigns
+        #         p_types.append(p_type)
+        #         symbol_table.insert(p_name, p_type, None)
+        #
+        #     body = expr.body
+        #
+        #     function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table)
+        if isinstance(expr, parse.Declaration):
             variables = expr.decl_assigns
             var_type = expr.base_type.type
             # int a; no declaration with init value.
@@ -121,11 +121,14 @@ def evaluate(expr):
             return None
         elif isinstance(expr, parse.Assign):
             # a = 2;
-            var_name = expr.left.name
+            var_name = expr.lvalue.name
             _op = expr.op
-            value = evaluate(expr.right)
+            value = evaluate(expr.rvalue)
             # type check needed
-            cur_value_table.set_value(var_name, value, 1)
+
+            #
+            if value != None:
+                cur_value_table.set_value(var_name, value, 1)
             return None
         elif isinstance(expr, parse.Identifier):
             # variable: a
@@ -147,13 +150,12 @@ def evaluate(expr):
         elif isinstance(expr, parse.FuncCall):
             # some_func(x, y)
             fn_name = expr.fn_name
-            args = expr.args
-            call_stack.insert(fn_name, args)
-            ############
-            # execute function?
-            # return_value = evaluate(function_table.get_body(fn_name))
-            ############
-            cur_symbol_table = function_table.get_symbom_table(fn_name)
+            if function_table[fn_name].table.return_value == None:
+                call_stack.link(CallContext(fn_name, 1))
+            else:
+                return_value = function_table[fn_name].table.return_value
+                function_table[fn_name].table.return_value = None
+                return return_value
             return None  # ??
         elif isinstance(expr, parse.Body):
             return_value = None
@@ -197,19 +199,22 @@ def generate_graph(ast):
                 fun_type = decl.r_type.type
                 params = []
                 p_types = []
+                p_names = []
 
                 symbol_table = Symbol_Table(None)
                 value_table = ValueTable()
 
                 for p in decl.declarator.params:
                     p_type = p.base_type
-                    p_name = p.decl_assigns
+                    p_name = p.decl_assigns[0].name
                     p_types.append(p_type)
+                    p_names.append(p_name)
                     symbol_table.insert(p_name, p_type, None)
+                    value_table.allocate_local(p_name, None, 1)
 
                 body = decl.body
 
-                function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table, value_table)
+                function_table.insert(fun_name, fun_type, p_types, p_names, 1, body, symbol_table, value_table, None)
                 if fun_name == 'main':
                     ast = body
                     call_stack.link(CallContext(fun_name, 1))
@@ -222,7 +227,7 @@ def generate_graph(ast):
     #     body = ast
 
     for stmt in ast.stmts:
-        if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration):
+        if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall)) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall)):
             block.append(stmt)
             # line_list.append(line)
         elif isinstance(stmt, parse.Iteration):
@@ -252,7 +257,55 @@ def generate_graph(ast):
             pred = []
             for last_node in last_nodes:
                 last_node.insert_next(loop_node)
+        elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall):
+            node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
+            for last_node in last_nodes:
+                last_node.insert_next(node)
+            last_nodes = [node]
+
+            block = []
+            line_list = []
+
+            fun_name = stmt.content.fn_name.name
+            fun_args = stmt.content.args
+
+            fun_params = function_table.table[fun_name].p_name
+
+            for param, arg in zip(fun_params, fun_args):
+                function_table.table[fun_name].ref_value.set_value(param, evaluate(arg), 1)
+
+            body = function_table.table[fun_name].body
+
+            call_node, call_last_node = generate_graph(body)
+
+            last_nodes[0].insert_next(call_node)
+            last_nodes = call_last_node
+        elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall):
+            node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
+
+            for last_node in last_nodes:
+                last_node.insert_next(node)
+            last_nodes = [node]
+
+            block = []
+            line_list = []
+
+            fun_name = stmt.content.fn_name.name
+            fun_args = stmt.content.args
+
+            fun_params = function_table.table[fun_name].p_name
+
+            for param, arg in zip(fun_params, fun_args):
+                function_table.table[fun_name].ref_value.set_value(param, evaluate(arg), 1)
+
+            body = function_table[fun_name].body
+
+            call_node, call_last_node = generate_graph(body)
+
+            last_nodes[0].insert_next(call_node)
+            last_nodes = [call_last_node]
+            block = [stmt]
         else:  # if branch
             pred = get_pred(stmt)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
