@@ -1,5 +1,12 @@
 import parse
 import operator
+from stack import *
+from structure import *
+
+
+value_stack = ValueStack()
+call_stack = CallStack()
+function_table = Function_Table()
 
 
 class Node:
@@ -45,11 +52,17 @@ class Node:
             return self, self.get_line(cur+1), cur+1
         else:
             if self.branch:
-                for i, pred in enumerate(self.pred):
-                    if evaluate(pred):
-                        next = self.get_next()[i]
-                        return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
-                raise Exception("no true branch")
+                # for i, pred in enumerate(self.pred):
+                #     if evaluate(pred):
+                #         next = self.get_next()[i]
+                #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
+                # raise Exception("no true branch")
+                if evaluate(self.pred):
+                    next = self.get_next()[0]
+                    return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
+                else:
+                    next = self.get_next()[1]
+                    return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
             else:
                 next = self.get_next()[0]
                 return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
@@ -61,44 +74,55 @@ def binop(op, lhs, rhs):
 
 
 def evaluate(expr):
-    if expr.returning:
+    cur_fun_table = call_stack.ret()
+    cur_symbol_table = cur_fun_table.table.ref
+    cur_value_table = cur_fun_table.get_value_table()
+
+    if isinstance(expr, parse.Statement) and expr.returning:
         # return something;
         return_value = evaluate(expr.content)
         call_stack.pop()
         cur_symbol_table = function_table.get_symbom_table(some_func)
         return return_value
     else:
-        expr = expr.content
+        if isinstance(expr, parse.Statement):
+            expr = expr.content
+
         if isinstance(expr, parse.FunctionDefn):
             fun_name = expr.declarator.base
             fun_type = expr.r_type
             params = []
+            p_types = []
 
-            symbol_table = ...
+            symbol_table = Symbol_Table(None)
 
             for p in expr.declarator.params:
                 p_type = p.base_type
                 p_name = p.decl_assigns
-                symbol_table.add(p_name, p_type, None)
+                p_types.append(p_type)
+                symbol_table.insert(p_name, p_type, None)
 
-            funtion_table.add()
-        if isinstance(expr, parse.Declaration):
+            body = expr.body
+
+            function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table)
+        elif isinstance(expr, parse.Declaration):
             variables = expr.decl_assigns
             var_type = expr.base_type
             # int a; no declaration with init value.
             for variable in variables:
-                symbol_table.add(variable, var_type, None)
+                cur_value_table.add(variable, var_type, None)
             return None
-        # elif is_assign:
-        #     # a = 2;
-        #     variable = expr.left
-        #     value = evaluate(expr.right)
-        #     # type check needed
-        #     symbol_table.update(variable, value)
-        #     return None
-        # elif is_var:
-        #     # variable: a
-        #     return symbol_table.find(expr.name)
+        elif isinstance(expr, parse.Assign):
+            # a = 2;
+            variable = expr.left
+            op = expr.op
+            value = evaluate(expr.right)
+            # type check needed
+            cur_value_table.update(variable, value)
+            return None
+        elif isinstance(expr, parse.Identifier):
+            # variable: a
+            return cur_value_table.find(expr.name)
         elif isinstance(expr, parse.Const):
             # const: 3
             return expr.value
@@ -145,6 +169,13 @@ def get_pred(stmt):
             return stmt.loopDesc
 
 
+def get_branch(stmt):
+    if stmt.hasElse:
+        return [stmt.thenB, stmt.elseB]
+    else:
+        return [stmt.thenB]
+
+
 def generate_graph(ast):
     block = []
     line_list = []
@@ -166,8 +197,8 @@ def generate_graph(ast):
         if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration):
             block.append(stmt)
             # line_list.append(line)
-        elif is_loop(stmt):
-            pred = get_loop_pred(stmt)  # [true_pred, false_pred]
+        elif isinstance(stmt, parse.Iteration):
+            pred = get_pred(stmt)  # [true_pred, false_pred]
             node = Node(block, line_list, pred)
 
             for last_node in last_nodes:
@@ -188,7 +219,7 @@ def generate_graph(ast):
             loop_node, loop_last_node = generate_graph(body)
 
             loop_end_node = Node([], [], pred)
-            loop_last_node.insert_next(loop_end_node)
+            loop_last_node[0].insert_next(loop_end_node)
 
             for last_node in last_nodes:
                 last_node.insert_next(loop_node)
@@ -207,8 +238,8 @@ def generate_graph(ast):
             pred = []
             br_last_nodes = []
 
-            for br in get_branch(stmt): # br = body
-                br_node, br_last_node = generate_graph(br) # for nested branch
+            for br in get_branch(stmt):  # br = body
+                br_node, br_last_node = generate_graph(br)  # for nested branch
                 last_nodes[0].insert_next(br_node)
                 br_last_nodes += br_last_node
             last_nodes = br_last_nodes
