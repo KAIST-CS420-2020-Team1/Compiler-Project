@@ -16,6 +16,7 @@ class ValueTable:
         self.table[name] = value_stack.allocate(value, line)
     # Frees all local variable
     def free_local(self):
+        self.table.clear()
         value_stack.free(len(self.table))
 
     def has_value(self, name):

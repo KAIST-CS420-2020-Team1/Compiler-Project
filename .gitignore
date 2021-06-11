@@ -141,3 +141,5 @@ dmypy.json
 Team
 *.out
 parsetab.py
+
+*.docx#
