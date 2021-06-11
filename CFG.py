@@ -49,6 +49,8 @@ class Node:
         pass
 
     def next_line(self):
+        if len(self.block) == 0:
+            self = self.next_line()
         return_value = evaluate(self.get_line(self.cursor))
         if self.cursor < (len(self.block) -1):
             self.cursor += 1
@@ -67,8 +69,11 @@ class Node:
                     next = self.get_next()[1]
                     return next
             else:
-                next = self.get_next()[0]
-                return next
+                if len(self.get_next()) > 0:
+                    next = self.get_next()[0]
+                    return next
+                else:
+                    return None
 
 
 def binop(op, lhs, rhs):
