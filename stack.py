@@ -25,7 +25,10 @@ class ValueTable:
         return self.table[name]
     # Gets value from address
     def get_value_from_address(self, addr):
-        return value_stack.get_value(addr)
+        if addr >= 0 and addr < len(value_stack.values):
+            return value_stack.get_value(addr)
+        else:
+            return None
     # Sets value from address
     def set_value_from_address(self, addr, value, line):
         value_stack.set_value(addr, value, line)
