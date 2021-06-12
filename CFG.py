@@ -60,6 +60,7 @@ class Node:
                 node.cursor += 1
                 return node
             else:
+                node.cursor = 0
                 if node.branch:
                     # for i, pred in enumerate(self.pred):
                     #     if evaluate(pred):
@@ -285,7 +286,11 @@ def generate_graph(ast):
             block.append(stmt)
             # line_list.append(line)
         elif isinstance(stmt, parse.Iteration):
-            block.append(stmt.loopDesc.init)
+            for_init = stmt.loopDesc.init
+            init_stmt = parse.Statement(for_init)
+            init_stmt.set_line(stmt.line_num)
+            block.append(init_stmt)
+
             pred = get_pred(stmt)  # [true_pred, false_pred]
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
