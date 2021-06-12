@@ -10,7 +10,6 @@
 class ValueTable:
     def __init__(self):
         self.table = dict()
-        self.table.setdefault(-1)
     # Allocates a local variable
     def allocate_local(self, name, value, line):
         self.table[name] = value_stack.allocate(value, line)
