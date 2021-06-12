@@ -2,8 +2,10 @@ import ply.lex as lex
 import re
 import sys
 
+
 class Scanner_Error(Exception):
     pass
+
 
 tokens = (
     # Storage class specifier
@@ -53,7 +55,7 @@ tokens = (
     "RIGHT_BRACKET",
     "LEFT_BRACE",
     "RIGHT_BRACE",
-    "ELLIPSIS", # ...
+    "ELLIPSIS",  # ...
     "ASSIGN",
     "SIZEOF",
     "DOT",
@@ -87,8 +89,8 @@ tokens = (
     "AMPERSAND",
     "PIPE",
     "TILDE",
-    "CIRCUMFLEX", # ^
-    "SHARP", # #
+    "CIRCUMFLEX",  # ^
+    "SHARP",  # #
     "EXCLAMATION",
     "QUESTION",
     "AMPERSAND_AMPERSAND",
@@ -99,7 +101,7 @@ tokens = (
 
     # Pointer - *, &
     "ASTERISK",
-    #"ADDRESS_OPERATOR", # &
+    # "ADDRESS_OPERATOR", # &
 
     # tokens
     "ID",
@@ -116,47 +118,47 @@ tokens = (
 
 identifiers = {
     # Storage class specifier
-    "extern" : "EXTERN",
-    "auto" : "AUTO",
-    "static" : "STATIC",
-    "register" : "REGISTER",
+    "extern": "EXTERN",
+    "auto": "AUTO",
+    "static": "STATIC",
+    "register": "REGISTER",
 
     # Flow control - for, if
-    "for" : "FOR",
-    "if" : "IF",
-    "else" : "ELSE",
-    "do" : "DO",
-    "while" : "WHILE",
-    "switch" : "SWITCH",
-    "case" : "CASE",
-    "default" : "DEFAULT",
-    "goto" : "GOTO",
-    "return" : "RETURN",
-    "break" : "BREAK",
-    "continue" : "CONTINUE",
+    "for": "FOR",
+    "if": "IF",
+    "else": "ELSE",
+    "do": "DO",
+    "while": "WHILE",
+    "switch": "SWITCH",
+    "case": "CASE",
+    "default": "DEFAULT",
+    "goto": "GOTO",
+    "return": "RETURN",
+    "break": "BREAK",
+    "continue": "CONTINUE",
 
     # Variable type - int, float
-    "int" : "INT",
-    "float" : "FLOAT",
-    "void" : "VOID",
-    "char" : "CHAR",
-    "short" : "SHORT",
-    "long" : "LONG",
-    "double" : "DOUBLE",
-    "signed" : "SIGNED",
-    "unsigned" : "UNSIGNED",
-    "const" : "CONST",
-    "enum" : "ENUM",
-    "struct" : "STRUCT",
-    "union" : "UNION",
-    "volatile" : "VOLATILE",
-    "typedef" : "TYPEDEF",
+    "int": "INT",
+    "float": "FLOAT",
+    "void": "VOID",
+    "char": "CHAR",
+    "short": "SHORT",
+    "long": "LONG",
+    "double": "DOUBLE",
+    "signed": "SIGNED",
+    "unsigned": "UNSIGNED",
+    "const": "CONST",
+    "enum": "ENUM",
+    "struct": "STRUCT",
+    "union": "UNION",
+    "volatile": "VOLATILE",
+    "typedef": "TYPEDEF",
 
     # Operators
-    "sizeof" : "SIZEOF",
+    "sizeof": "SIZEOF",
 
     # Function
-    "printf" : "PRINTF"
+    "printf": "PRINTF"
 }
 
 # Operators
@@ -169,7 +171,7 @@ t_LEFT_BRACKET = r"\["
 t_RIGHT_BRACKET = r"\]"
 t_LEFT_BRACE = r"{"
 t_RIGHT_BRACE = r"}"
-t_ELLIPSIS = r"\.\.\." # ...
+t_ELLIPSIS = r"\.\.\."  # ...
 t_ASSIGN = r"="
 t_DOT = r"\."
 t_ARROW = r"->"
@@ -182,7 +184,7 @@ t_ASSIGN_RIGHT_SHIFT = r">>="
 t_PLUS = r"\+"
 t_MINUS = r"-"
 t_MUL = r"\*"
-t_DIV = r"/" # r'
+t_DIV = r"/"  # r'
 t_PLUS_PLUS = r"\+\+"
 t_MINUS_MINUS = r"\-\-"
 t_MOD = r"%"
@@ -202,8 +204,8 @@ t_LESS_EQUAL = r"<="
 t_AMPERSAND = r"&"
 t_PIPE = r"\|"
 t_TILDE = r"~"
-t_CIRCUMFLEX = r"\^" # r"^" # ^
-t_SHARP = r"\#" # r"\#" # #
+t_CIRCUMFLEX = r"\^"  # r"^" # ^
+t_SHARP = r"\#"  # r"\#" # #
 t_EXCLAMATION = r"!"
 t_QUESTION = r"\?"
 t_AMPERSAND_AMPERSAND = r"&&"
@@ -214,7 +216,9 @@ t_ASSIGN_CIRCUMFLEX = r"\^="
 
 # Pointer - *, &
 t_ASTERISK = r"\*"
-#t_ADDRESS_OPERATOR", # &
+
+
+# t_ADDRESS_OPERATOR", # &
 
 def t_ID(token):
     r"[A-Za-z_][\w]*"
@@ -222,19 +226,29 @@ def t_ID(token):
         token.type = identifiers[token.value]
     return token
 
+
+def t_invalid_ID(token):
+    r"[\d][A-Za-z_][\w]*"
+    print("Syntax error : line", token.lexer.lineno)
+    raise Scanner_Error()
+
+
 def t_FLOAT_NUM(token):
     r"((\d*\.\d+|\d+\.\d*)([eE][+-]?\d+)?)|((\d+)([eE][+-]?\d+))"
     token.value = float(token.value)
     return token
+
 
 def t_INT_NUM(token):
     r"(([1-9]\d*)|0)"
     token.value = int(token.value)
     return token
 
+
 def t_CHARACTER(token):
     r"'\w'"
     return token
+
 
 def t_STRING(token):
     r'".*"'
@@ -255,18 +269,22 @@ def t_STRING(token):
         raise Scanner_Error()
 
     return token
-    
+
+
 def t_SPACE(token):
     r"[\s]+"
     token.lexer.lineno += token.value.count("\n")
+
 
 def t_COMMENT(token):
     r"((/\*([\w\W]*)?\*/)|(//.*))"
     token.lexer.lineno += token.value.count("\n")
 
+
 def t_error(token):
     print("Syntax error : line", token.lexer.lineno)
     raise Scanner_Error()
+
 
 def lex_scanner():
     input_file = open(sys.argv[1])
@@ -276,7 +294,7 @@ def lex_scanner():
     strings = ""
     for line in lines:
         strings += line
-    
+
     lexer.input(strings)
 
     while True:
@@ -285,6 +303,7 @@ def lex_scanner():
             break
         else:
             print("Line %d: (%s, '%s')" % (token.lineno, token.type, token.value))
+
 
 lexer = lex.lex()
 

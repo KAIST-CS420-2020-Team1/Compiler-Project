@@ -95,6 +95,7 @@ if __name__ == '__main__':
 
     input_file = open(sys.argv[1])
     parsed = parser.parse(input_file.read(), tracking=True)
+    parsed = analysis.desugar_ast(parsed)
     input_file.close()
     print(parsed)
     ctxt = MainContext(parsed)

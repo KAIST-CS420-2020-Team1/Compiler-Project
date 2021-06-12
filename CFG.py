@@ -12,6 +12,7 @@ value_stack = ValueStack()
 call_stack = CallStack()
 function_table = Function_Table()
 
+temp_dictionary = {}
 
 class Node:
     def __init__(self, block, line_list, pred=None):
@@ -193,7 +194,9 @@ def evaluate(line, expr):
                     array_value = copy.deepcopy(array_cur_value)
                     array_value[array_index] = value
                     cur_value_table.set_value(array_name, array_value, line)
-
+                elif isinstance(var, parse.Temp_Ident):
+                    temp_var_name = var.name
+                    temp_dictionary[temp_var_name] = value
                 else:
                     var_name = var.name
                     var_type = cur_symbol_table.table[var_name].type
@@ -206,6 +209,8 @@ def evaluate(line, expr):
         elif isinstance(expr, parse.Identifier):
             # variable: a
             return cur_value_table.get_value(expr.name)
+        elif isinstance(expr, parse.Temp_Ident):
+            return temp_dictionary[expr.name]
         elif isinstance(expr, parse.ArrayIdx):
             # variable: a
             array_name = expr.array.name
@@ -333,7 +338,7 @@ def generate_graph(ast):
     #     body = ast
 
     for stmt in ast.stmts:
-        if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall)) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall)):
+        if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall)) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall)) and not (isinstance(stmt, parse.Assign) and isinstance(stmt.rvalue, parse.FuncCall)):
             block.append(stmt)
             # line_list.append(line)
         elif isinstance(stmt, parse.Iteration):
@@ -374,7 +379,7 @@ def generate_graph(ast):
             pred = []
             for last_node in last_nodes:
                 last_node.insert_next(loop_node)
-        elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall):
+        elif (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall)):
             block.append(stmt)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
@@ -399,7 +404,7 @@ def generate_graph(ast):
 
             last_nodes[0].insert_next(call_node)
             last_nodes = call_last_node
-        elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall):
+        elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall) or (isinstance(stmt, parse.Assign) and isinstance(stmt.rvalue, parse.FuncCall)):
             block.append(stmt)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
@@ -409,8 +414,10 @@ def generate_graph(ast):
 
             block = []
             line_list = []
-
-            fun_name = stmt.content.rvalue.fn_name.name
+            if isinstance(stmt, parse.Statement):
+                fun_name = stmt.content.rvalue.fn_name.name
+            else:
+                fun_name = stmt.rvalue.fn_name.name
             # fun_args = stmt.content.rvalue.args
             #
             # fun_params = function_table.table[fun_name].p_name
