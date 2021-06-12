@@ -46,6 +46,7 @@ def is_branching(stmt):
 def desugar_ast(ast: parse.TranslationUnit):
     top_decls = list(filter(is_instance(parse.Declaration), ast.decls))
     fns = list(filter(is_instance(parse.FunctionDefn), ast.decls))
+    # print(is_instance(parse.FunctionDefn)(ast.decls[0]), isinstance(ast.decls[0], parse.FunctionDefn))
     desugar_tdecls = desugar_lines(top_decls)
     for decl in desugar_tdecls:
         if decl.value != None and not isinstance(decl.value, parse.Const):
@@ -66,7 +67,7 @@ def desugar_body(body: parse.Body):
 # Desugar mixed statements
 def desugar_line(stmt):
     if(isinstance(stmt, parse.Declaration)):
-        return stmt
+        return [ stmt ]
         # return [ sub for decl in stmt.desugar() for sub in desugar_decl(decl) ]
     elif(isinstance(stmt, parse.Selection)):
         exes, stmt.cond = desugar_expr(stmt.line_num, stmt.cond)
@@ -94,21 +95,21 @@ def desugar_line(stmt):
                 print("line {}: function call in condition/iteration not yet supported, in {}".format(stmt.line_num, stmt))
                 raise ValueError("semantic error")
         for exe in exes:
-            exe.set_line(stmt.line_num)
+            exe.line_num = stmt.line_num
         stmt.body = desugar_body(stmt.body)
         return exes + [stmt]
     elif(isinstance(stmt, parse.Statement)):
         exes, res = desugar_expr(stmt.line_num, stmt.content)
         stmt.content = res
         for exe in exes:
-            exe.set_line(stmt.line_num)
+            exe.line_num = stmt.line_num
         return exes + [stmt]
     elif(isinstance(stmt, parse.PrintStmt)):
         if stmt.value != None:
             exes, res = desugar_expr(stmt.line_num, stmt.value)
             stmt.value = res
             for exe in exes:
-                exe.set_line(stmt.line_num)
+                exe.line_num = stmt.line_num
             return exes + [stmt]
         else:
             return [ stmt ]
@@ -186,7 +187,13 @@ def desugar_expr(line, expr):
         return (exel + exer, parse.BinOp(resl, resr, expr.op))
     elif(isinstance(expr, parse.Assign)):
         if expr.op == '=' and isinstance(expr.lvalue, parse.Identifier) and isinstance(expr.rvalue, parse.FuncCall):
-            return ([Fn_Call_Stmt(expr.rvalue.fn_name, expr.rvalue.args, expr.lvalue)], expr.lvalue)
+            exes = list()
+            new_args = list()
+            for exe, arg in map(functools.partial(desugar_expr, line), expr.rvalue.args):
+                exes.extend(exe)
+                new_args.append(arg)
+            expr.rvalue.args = new_args
+            return (exes, expr)
         else:
             exel, resl = desugar_expr(line, expr.lvalue)
             exer, resr = desugar_expr(line, expr.rvalue)
@@ -196,9 +203,15 @@ def desugar_expr(line, expr):
         exer, resr = desugar_expr(line, expr.index)
         return (exel + exer, parse.ArrayIdx(resl, resr))
     elif(isinstance(expr, parse.FuncCall)):
+        exes = list()
+        new_args = list()
+        for exe, arg in map(functools.partial(desugar_expr, line), expr.args):
+            exes.extend(exe)
+            new_args.append(arg)
         temp_var = Temp_Ident(temp_info.next())
-        call = Fn_Call_Stmt(expr.fn_name, expr.args, temp_var)
-        return ([call], temp_var)
+        call = parse.Assign(temp_var, parse.FuncCall(expr.fn_name, new_args), '=')
+        # call = Fn_Call_Stmt(expr.fn_name, expr.args, temp_var)
+        return (exes + [ call ], temp_var)
     elif(isinstance(expr, parse.Identifier)):
         return ([], expr)
     elif(isinstance(expr, parse.Const)):

@@ -518,6 +518,7 @@ def test_parse():
     print('Done')
     print('')
     print(result)
+    print(result)
     return result
 
 if __name__ == '__main__':
