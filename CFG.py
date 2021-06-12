@@ -174,11 +174,16 @@ def evaluate(line, expr):
             return binop(op, lhs, rhs)
         elif isinstance(expr, parse.UniOp):
             # only a++?
-            operand = evaluate(line, expr.operand)
-            value = binop('+', operand, 1)
-            cur_value_table.set_value(expr.operand.name, value, line)
+            if expr.op == '++':
+                operand = evaluate(line, expr.operand)
+                value = binop('+', operand, 1)
+                cur_value_table.set_value(expr.operand.name, value, line)
+                return binop('+', operand, 1)
+            elif expr.op == '-' and not expr.postfix:
+                operand = -1 * evaluate(line, expr.operand)
+                return operand
+            raise Exception("not implemented uniop")
             # op = expr.op
-            return binop('+', operand, 1)
         elif isinstance(expr, parse.FuncCall):
             # some_func(x, y)
             fn_name = expr.fn_name.name
