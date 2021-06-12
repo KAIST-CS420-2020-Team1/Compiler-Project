@@ -21,6 +21,8 @@ class ValueTable:
 
     def has_value(self, name):
         return name in self.table
+    def get_address(self, name):
+        return self.table[name]
     def get_value(self, name):
         return value_stack.get_value(self.table[name])
     def get_history(self, name):

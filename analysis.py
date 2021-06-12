@@ -90,20 +90,20 @@ def desugar_line(stmt):
         for exe in exes:
             exe.line_num = stmt.line_num
         stmt.body = desugar_body(stmt.body)
-        return exes + [stmt]
+        return exes + [ stmt ]
     elif(isinstance(stmt, parse.Statement)):
         exes, res = desugar_expr(stmt.line_num, stmt.content)
         stmt.content = res
         for exe in exes:
             exe.line_num = stmt.line_num
-        return exes + [stmt]
+        return exes + [ stmt ]
     elif(isinstance(stmt, parse.PrintStmt)):
         if stmt.value != None:
             exes, res = desugar_expr(stmt.line_num, stmt.value)
             stmt.value = res
             for exe in exes:
                 exe.line_num = stmt.line_num
-            return exes + [stmt]
+            return exes + [ stmt ]
         else:
             return [ stmt ]
     else:
