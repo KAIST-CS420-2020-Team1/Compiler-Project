@@ -235,53 +235,71 @@ class OptimData:
         self.defed = set()
         self.var_in = set()
         self.var_out = set()
+
+        self.per_line = list()
+
         self.initialized = False
         self.visited = False
 
 # Calculates 'in' and 'out' variables and fills the information within each node
-# For now, it does in basic-block basis, so it does not track definitions and usage.
 def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
     nst = store[node.id]
     if not nst.initialized: # Updates the used/defined
-        used = set() # Used
-        defed = set() # Defined/Modified
         for stmt in node.block:
+            nst_line = OptimData()
+            nst.per_line.append(nst_line)
             if isinstance(stmt, parse.Statement):
-                used += used_in_expr(stmt.content)
-                defed += result_of_expr(stmt.content)
+                nst_line.used = used_in_expr(stmt.content)
+                nst_line.defed = result_of_expr(stmt.content)
             elif isinstance(stmt, parse.EachDecl):
-                used += used_in_expr(stmt.value)
-                defed += result_of_expr(stmt.value)
+                nst_line.used = used_in_expr(stmt.value)
+                nst_line.defed = result_of_expr(stmt.value)
             elif isinstance(stmt, analysis.Fn_Call_Stmt):
                 for arg in stmt.args:
-                    used += used_in_expr(arg)
-                    defed += result_of_expr(arg)
+                    nst_line.used += used_in_expr(arg)
+                    nst_line.defed += result_of_expr(arg)
             elif isinstance(stmt, parse.PrintStmt) and stmt.value != None:
-                used += used_in_expr(stmt.value)
-                defed += result_of_expr(stmt.value)
-        used += used_in_expr(node.pred)
-        defed += result_of_expr(node.pred)
+                nst_line.used = used_in_expr(stmt.value)
+                nst_line.defed = result_of_expr(stmt.value)
+        if node.branch:
+            nst_line = OptimData()
+            nst.per_line.append(nst_line)
+            nst_line.used = used_in_expr(node.pred)
+            nst_line.defed = result_of_expr(node.pred)
 
         # Substitutes
-        nst.used = used
-        nst.defed = defed
+        nst.used = set()
+        nst.defed = set()
+        for v in nst.per_line:
+            nst.used += v.used
+            nst.defed += v.defed
         nst.initialized = True
 
+
     var_out = set()
+    var_in = set()
     nst.visited = True # Pre-mark visited, so lower calls won't call this fn again
 
     for next_node in node.next:
-        if not store[next_node.id].visited: # Does not visit again in loop case
+        # Does not visit to calculate again in loop case
+        if not store[next_node.id].visited:
             calc_in_out(next_node)
         # Calculates for sub-nodes
         var_out += nst.var_in
     nst.var_out = var_out
-    nst.var_in = used + nst.var_out.difference(defed)
+
+    var_in = var_out
+    for i in range(len(nst.per_line)-1, 0, -1):
+        nst_line: OptimData = nst.per_line[i]
+        nst_line.var_out = var_in # Succeeding IN is current OUT on linear
+        nst_line.var_in = nst_line.used + var_out.difference(nst_line.defed)
+        var_in = nst_line.var_in
+    nst.var_in = var_in # 0-th index IN is the block IN
 
 # Eliminates simple evaluations without assignments and side-effects
 def eliminate_pure_expr(expr):
     if(isinstance(expr, parse.UniOp)):
-        if expr.op in ['+', '-', '&']:
+        if expr.op in ['+', '-', '&']: # Pointer dereference is considered impure ()
             return eliminate_pure_expr(expr.operand)
     elif(isinstance(expr, parse.BinOp)):
         return eliminate_pure_expr(expr.left) + eliminate_pure_expr(expr.right)
@@ -323,9 +341,15 @@ def eliminate_dead_stmt(out: "set[str]", stmt):
         return [ stmt ]
 
 # Eliminate dead code within this and successor nodes. Mutates CFG.
+# Does not change branch condition, for it can cause anomalies
 def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):
-    mapped = map(functools.partial(eliminate_dead_stmt, store[node.id].var_out), node.block)
-    node.block = list(filter(lambda s: s != None, itertools.chain(*mapped)))
+    new_block = list()
+    i = 0
+    for stmt in node.block: # Finds corresponding information
+        new_stmt = eliminate_dead_stmt(store[node.id].per_line[i].var_out, stmt)
+        new_block.extend(new_stmt)
+        i = i + 1
+    node.block = new_block
     store[node.id].visited = True
     for next_node in node.next:
         if not store[next_node.id].visited:
@@ -337,10 +361,10 @@ def dead_code_elimination(node: CFG.Node):
     store = dict()
     store.setdefault(OptimData())
     calc_in_out(store, node) # First pass
-    for (k, v) in store:
+    for v in store.values:
         v.visited = False
     calc_in_out(store, node) # Second pass, to detect for loops
-    for (k, v) in store:
+    for v in store.values:
         v.visited = False
     eliminate_dead(store, node)
 

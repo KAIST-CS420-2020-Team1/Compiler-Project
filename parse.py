@@ -454,7 +454,7 @@ class PrintStmt(Lined):
         self.value = value # Value to print
         pass
     def __str__(self):
-        return "{}> printf({}, {})".format(self.line_num, self.format, self.value)
+        return "{}> printf({}, {})".format(self.line_num, repr(self.format), self.value)
 
 def p_statement(t):
     '''statement : body
