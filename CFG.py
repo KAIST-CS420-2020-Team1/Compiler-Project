@@ -260,7 +260,7 @@ def evaluate(line, expr):
                 if "%d" in format or "%f" in format:
                     raise Exception("formatting error")
                 else:
-                    print(format)
+                    print(format, end='')
             return None
     return None
 
