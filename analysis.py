@@ -21,6 +21,12 @@ class TempInfo:
 
 temp_info = TempInfo()
 
+class Temp_Ident():
+    def __init__(self, name):
+        self.name = name
+    def __str__(self):
+        return str(self.name)
+
 # Representa a function call along with putting it into some ref
 # Replaces FuncCall
 class Fn_Call_Stmt(parse.Lined):
@@ -179,7 +185,7 @@ def desugar_expr(line, expr):
         return (exel + exer, parse.BinOp(resl, resr, expr.op))
     elif(isinstance(expr, parse.Assign)):
         if expr.op == '=' and isinstance(expr.lvalue, parse.Identifier) and isinstance(expr.rvalue, parse.FuncCall):
-            return ([Fn_Call_Stmt(expr.rvalue.fn_name, expr.rvalue.args, expr.lvalue.name)], expr.lvalue)
+            return ([Fn_Call_Stmt(expr.rvalue.fn_name, expr.rvalue.args, expr.lvalue)], expr.lvalue)
         else:
             exel, resl = desugar_expr(line, expr.lvalue)
             exer, resr = desugar_expr(line, expr.rvalue)
@@ -189,8 +195,8 @@ def desugar_expr(line, expr):
         exer, resr = desugar_expr(line, expr.index)
         return (exel + exer, parse.ArrayIdx(resl, resr))
     elif(isinstance(expr, parse.FuncCall)):
-        temp_var = parse.Identifier(temp_info.next())
-        call = Fn_Call_Stmt(expr.fn_name, expr.args, temp_var.name)
+        temp_var = Temp_Ident(temp_info.next())
+        call = Fn_Call_Stmt(expr.fn_name, expr.args, temp_var)
         return ([call], temp_var)
     elif(isinstance(expr, parse.Identifier)):
         return ([], expr)
