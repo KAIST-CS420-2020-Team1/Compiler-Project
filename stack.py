@@ -70,6 +70,10 @@ class CallStack:
         ret_ctxt = self.called[0]
         self.called = self.called[1:]
         return ret_ctxt
+    # Returns the top of the stack without popping
+    def top(self):
+        return self.called[0]
+
 
 # Calling context. Stores parent function name and line
 class CallContext:

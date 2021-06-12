@@ -101,7 +101,7 @@ class Node:
 
 
 def binop(op, lhs, rhs):
-    operations = {'+': operator.add, '-': operator.sub, '*': operator.mul, '/': operator.truediv, '<': operator.lt, '>': operator.gt}
+    operations = {'+': operator.add, '-': operator.sub, '*': operator.mul, '/': operator.truediv, '<': operator.lt, '>': operator.gt, '==': operator.eq}
     return operations[op](lhs, rhs)
 
 

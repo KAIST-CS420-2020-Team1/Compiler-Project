@@ -1,4 +1,6 @@
 int fn_call(int x) {
+    int y;
+    y = 0;
     return x + 2;
 }
 

@@ -11,16 +11,17 @@ def const_expr_eval(expr):
     if(isinstance(expr, parse.UniOp)):
         expr.operand = const_expr_eval(expr.operand)
         if(isinstance(expr.operand, parse.Const)):
-            if expr.op == '.':
-                pass
-            # TODO utility for running expression
-            pass
+            # Only + and - can be simplified
+            if expr.op == '+':
+                return expr.operand
+            elif expr.op == '-':
+                return parse.Const(- expr.operand.value)
         return expr
     elif(isinstance(expr, parse.BinOp)):
         expr.left = const_expr_eval(expr.left)
         expr.right = const_expr_eval(expr.right)
         if(isinstance(expr.left, parse.Const) and isinstance(expr.right, parse.Const)):
-            return parse.Const(CFG.binop(expr.op, expr.left, expr.right))
+            return parse.Const(CFG.binop(expr.op, expr.left.value, expr.right.value))
         return expr
     elif(isinstance(expr, parse.Assign)):
         expr.lvalue = const_expr_eval(expr.lvalue)
@@ -138,8 +139,10 @@ def substitute_stmt(stmt, ident, to_sub):
 
 UNIT_ITER = 8
 UNROLL_THRESHOLD = 16
+
+
 # Unroll loops of pattern: for(i = 0; i < v; i++)
-### NOTE: Not yet implemented. Does not work on CFG-basis
+### NOTE: Applies before CFG construction
 def unroll_loop(stmt):
     if(isinstance(stmt, parse.Iteration)):
         desc = stmt.loopDesc
@@ -147,7 +150,6 @@ def unroll_loop(stmt):
         if len(body) > UNROLL_THRESHOLD:
             return stmt
         if(isinstance(desc, parse.ForDesc)):
-            # TODO Perhaps analyze flow of values
             # Initiation
             if not isinstance(desc.init, parse.Assign):
                 return stmt
@@ -228,6 +230,11 @@ def unroll_loop(stmt):
 
     return stmt
 
+# Unroll loop which is represented as a single basic block succeeded by a condition block.
+def unroll_loop_node(node: CFG.Node):
+    
+    pass
+
 
 class OptimData:
     def __init__(self):
@@ -243,7 +250,7 @@ class OptimData:
 
 # Calculates 'in' and 'out' variables and fills the information within each node
 def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
-    nst = store[node.id]
+    nst = store[node.index]
     if not nst.initialized: # Updates the used/defined
         for stmt in node.block:
             nst_line = OptimData()
@@ -275,14 +282,13 @@ def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
             nst.defed += v.defed
         nst.initialized = True
 
-
     var_out = set()
     var_in = set()
     nst.visited = True # Pre-mark visited, so lower calls won't call this fn again
 
     for next_node in node.next:
         # Does not visit to calculate again in loop case
-        if not store[next_node.id].visited:
+        if not store[next_node.index].visited:
             calc_in_out(next_node)
         # Calculates for sub-nodes
         var_out += nst.var_in
@@ -346,13 +352,13 @@ def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):
     new_block = list()
     i = 0
     for stmt in node.block: # Finds corresponding information
-        new_stmt = eliminate_dead_stmt(store[node.id].per_line[i].var_out, stmt)
+        new_stmt = eliminate_dead_stmt(store[node.index].per_line[i].var_out, stmt)
         new_block.extend(new_stmt)
         i = i + 1
     node.block = new_block
-    store[node.id].visited = True
+    store[node.index].visited = True
     for next_node in node.next:
-        if not store[next_node.id].visited:
+        if not store[next_node.index].visited:
             eliminate_dead(store, next_node)
 
 # Simple two-pass dead-code elimination
@@ -370,12 +376,12 @@ def dead_code_elimination(node: CFG.Node):
 
 
 def const_eval_each(visited:"dict[str, bool]", node: CFG.Node):
-    visited[node.id] = True
+    visited[node.index] = True
     node.block = list(map(const_eval_in_stmt, node.block))
     if node.pred != None:
         node.pred = const_expr_eval(node.pred)
     for next_node in node.next:
-        if not visited[next_node.id]:
+        if not visited[next_node.index]:
             const_eval_each(visited, next_node)
 # Constant evaluation in CFG. Mutates CFG
 def const_eval_node(node: CFG.Node):
