@@ -239,7 +239,7 @@ def t_CHARACTER(token):
 def t_STRING(token):
     r'".*"'
     check_token = token.value
-    token.value = token.value[1:-1]
+    token.value = eval(token.value)
     check = re.compile(r"(\\a|\\b|\\f|\\n|\\r|\\t|\\v|\\\\|\\'|\\\")")
     check_token = check.sub("", check_token)
 
