@@ -143,13 +143,13 @@ def evaluate(line, expr):
     cur_symbol_table = cur_fun_table.ref_sym
     cur_value_table = cur_fun_table.ref_value
     if isinstance(expr, Dummy):
-        print("Dummy Statement")
         return None
     elif isinstance(expr, parse.Statement) and expr.returning:
         # return something;
         return_value = evaluate(expr.line_num, expr.content)
         cur_fun_table.return_value = return_value
         call_stack.ret()
+        cur_value_table.free_local()
         # cur_symbol_table = function_table.get_symbom_table(some_func)
         return None
     else:
@@ -278,6 +278,7 @@ def evaluate(line, expr):
             fun_args = expr.args
 
             for param, arg in zip(fun_params, fun_args):
+                function_table.table[fn_name].ref_value.allocate_local(param, None, function_table.table[fn_name].line)
                 function_table.table[fn_name].ref_value.set_value(param, evaluate(line, arg), line)
 
             if function_table.table[fn_name].return_value == None:
@@ -351,7 +352,7 @@ def generate_graph(ast):
                     p_types.append(p_type)
                     p_names.append(p_name)
                     symbol_table.insert(p_name, p_type, None)
-                    value_table.allocate_local(p_name, None, decl.line_num)
+                    # value_table.allocate_local(p_name, None, decl.line_num)
 
                 body = decl.body
 
