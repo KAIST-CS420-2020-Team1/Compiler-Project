@@ -66,7 +66,8 @@ def desugar_body(body: parse.Body):
 # Desugar mixed statements
 def desugar_line(stmt):
     if(isinstance(stmt, parse.Declaration)):
-        return [ sub for decl in stmt.desugar() for sub in desugar_decl(decl) ]
+        return stmt
+        # return [ sub for decl in stmt.desugar() for sub in desugar_decl(decl) ]
     elif(isinstance(stmt, parse.Selection)):
         exes, stmt.cond = desugar_expr(stmt.line_num, stmt.cond)
         for exe in exes:
