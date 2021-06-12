@@ -19,14 +19,6 @@ class TempInfo:
         self.available_id = id + 1
         return id
 
-# Body as list of blocks
-# NOTE Not used
-class BlockBody:
-    def __init__(self, blocks):
-        self.blocks = blocks
-    def __str__(self):
-        return "\n".join([">>> {}".format(", ".join([str(line) for line in block])) for block in self.blocks])
-
 temp_info = TempInfo()
 
 # Representa a function call along with putting it into some ref

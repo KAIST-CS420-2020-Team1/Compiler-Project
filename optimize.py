@@ -142,7 +142,7 @@ UNROLL_THRESHOLD = 16
 
 
 # Unroll loops of pattern: for(i = 0; i < v; i++)
-### NOTE: Applies before CFG construction
+### NOTE Not used
 def unroll_loop(stmt):
     if(isinstance(stmt, parse.Iteration)):
         desc = stmt.loopDesc
@@ -229,11 +229,6 @@ def unroll_loop(stmt):
             return parse.Iteration(new_desc, new_body)
 
     return stmt
-
-# Unroll loop which is represented as a single basic block succeeded by a condition block.
-def unroll_loop_node(node: CFG.Node):
-    
-    pass
 
 
 class OptimData:
