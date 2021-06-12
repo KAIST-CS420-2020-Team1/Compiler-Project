@@ -21,12 +21,6 @@ class TempInfo:
 
 temp_info = TempInfo()
 
-class Temp_Ident():
-    def __init__(self, name):
-        self.name = name
-    def __str__(self):
-        return "[|{}|]".format(self.name)
-
 # Representa a function call along with putting it into some ref
 # Replaces FuncCall
 class Fn_Call_Stmt(parse.Lined):
@@ -208,7 +202,7 @@ def desugar_expr(line, expr):
         for exe, arg in map(functools.partial(desugar_expr, line), expr.args):
             exes.extend(exe)
             new_args.append(arg)
-        temp_var = Temp_Ident(temp_info.next())
+        temp_var = parse.Temp_Ident(temp_info.next())
         call = parse.Assign(temp_var, parse.FuncCall(expr.fn_name, new_args), '=')
         # call = Fn_Call_Stmt(expr.fn_name, expr.args, temp_var)
         return (exes + [ call ], temp_var)

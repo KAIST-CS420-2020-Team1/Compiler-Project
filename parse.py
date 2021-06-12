@@ -159,6 +159,12 @@ class Identifier():
         self.name = name
     def __str__(self):
         return str(self.name)
+# Temporary Identifier
+class Temp_Ident():
+    def __init__(self, name):
+        self.name = name
+    def __str__(self):
+        return "[|{}|]".format(self.name)
 
 class Asterisked():
     def __init__(self, base):
