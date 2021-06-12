@@ -8,21 +8,39 @@ import structure
 import stack
 import analysis
 
+import re
+
 
 def val_str(value):
-    if value == None:
-        return 'N/A'
+    if (value == None):
+        return "N/A"
     else:
-        return str(value)
+        if (isinstance(value, list)):
+            ret = False
+            for elem in value:
+                if (elem != None):
+                    ret = True
+                    break
+            if (ret):
+                return str(value)
+            else:
+                return "N/A"
+        else:
+            return str(value)
 
 
-def history_str(var_name, history):
+def history_str(var, idx, history):
     if history == []:
-        return "{} not yet initialized".format(var_name)
+        return "{} not yet initialized".format(var)
     else:
-        return "\n".join([
-            "{} = {} at line {}".format(var_name, val_str(val), line)
-            for (val, line) in history])
+        if (idx == None):
+            return "\n".join([
+                "{} = {} at line {}".format(var, val_str(val), line)
+                for (val, line) in history])
+        else:
+            return "\n".join([
+                "{} = {} at line {}".format(var, val_str(val[idx]), line)
+                for (val, line) in history])
 
 
 class MainContext:
@@ -58,11 +76,21 @@ class MainContext:
 
         return
 
-    def cmd_print(self, var_name):
-        vtable = self.func_tables.table[self.call_stack.top().name].ref_value
+    def cmd_print(self, var, idx):
+        if (len(self.call_stack.called) == 0):
+            vtable = self.cur_func_table.ref_value
+        else:
+            vtable = self.func_tables.table[self.call_stack.top().name].ref_value
 
-        if vtable.has_value(var_name):
-            print(val_str(vtable.get_value(var_name)))
+        if vtable.has_value(var):
+            if (idx == None):
+                print(val_str(vtable.get_value(var)))
+            else:
+                arr = vtable.get_value(var)
+                if ((-len(arr) <= idx) and (idx < len(arr))):
+                    print(val_str(vtable.get_value(var)[idx]))
+                else:
+                    print("Invisible variable")
             return
 
         '''vtable = self.global_table.ref.ref_value
@@ -74,11 +102,21 @@ class MainContext:
         print("Invisible variable")
         return
 
-    def cmd_trace(self, var_name):
-        vtable = self.func_tables.table[self.call_stack.top().name].ref_value
+    def cmd_trace(self, var, idx):
+        if (len(self.call_stack.called) == 0):
+            vtable = self.cur_func_table.ref_value
+        else:
+            vtable = self.func_tables.table[self.call_stack.top().name].ref_value
 
-        if vtable.has_value(var_name):
-            print(history_str(var_name, vtable.get_history(var_name)))
+        if vtable.has_value(var):
+            if (idx == None):
+                print(history_str(var, idx, vtable.get_history(var)))
+            else:
+                arr = vtable.get_value(var)
+                if ((-len(arr) <= idx) and (idx < len(arr))):
+                    print(history_str(var, idx, vtable.get_history(var)))
+                else:
+                    print("Invisible variable")
             return
 
         '''vtable = self.global_table.ref
@@ -96,16 +134,18 @@ if __name__ == '__main__':
     input_file = open(sys.argv[1])
     parsed = parser.parse(input_file.read(), tracking=True)
     parsed = analysis.desugar_ast(parsed)
-    input_file.close()
     print(parsed)
+    input_file.close()
     ctxt = MainContext(parsed)
 
     ctxt.begin()
-
     while True:
         line = input('>> ')
         if line == '':
             break
+
+        rule_1 = re.compile(r"([A-Za-z_][\w]*$)")
+        rule_2 = re.compile(r"([A-Za-z_][\w]*\[\d+\]$)")
 
         args = line.split(' ')
         if args[0] == 'next':
@@ -119,8 +159,34 @@ if __name__ == '__main__':
             else:
                 print("End of program")
         elif args[0] == 'print' and len(args) == 2:
-            ctxt.cmd_print(args[1])
+            if (rule_1.match(args[1])):
+                var = re.findall(r"([A-Za-z_][\w]*$)", args[1])
+                var = var[0]
+                idx = None
+                ctxt.cmd_print(var, idx)
+            elif (rule_2.match(args[1])):
+                var = re.findall(r"([A-Za-z_][\w]*)", args[1])
+                var = var[0]
+                idx = re.findall(r"(\[\d+\])", args[1])
+                idx = idx[0]
+                idx = int(idx[1:-1])
+                ctxt.cmd_print(var, idx)
+            else:
+                print("Invalid typing of the variable name")
         elif args[0] == 'trace' and len(args) == 2:
-            ctxt.cmd_trace(args[1])
+            if (rule_1.match(args[1])):
+                var = re.findall(r"([A-Za-z_][\w]*$)", args[1])
+                var = var[0]
+                idx = None
+                ctxt.cmd_trace(var, idx)
+            elif (rule_2.match(args[1])):
+                var = re.findall(r"([A-Za-z_][\w]*)", args[1])
+                var = var[0]
+                idx = re.findall(r"(\[\d+\])", args[1])
+                idx = idx[0]
+                idx = int(idx[1:-1])
+                ctxt.cmd_trace(var, idx)
+            else:
+                print("Invalid typing of the variable name")
         else:
             print("Invalid typing of the variable name")
