@@ -8,11 +8,13 @@ import structure
 import stack
 import analysis
 
+
 def val_str(value):
     if value == None:
         return 'N/A'
     else:
         return str(value)
+
 
 def history_str(var_name, history):
     if history == []:
@@ -21,6 +23,7 @@ def history_str(var_name, history):
         return "\n".join([
             "{} = {} at line {}".format(var_name, val_str(val), line)
             for (val, line) in history])
+
 
 class MainContext:
     def __init__(self, ast):
@@ -38,7 +41,7 @@ class MainContext:
         self.cur_func_table = self.func_tables.table["main"]
         pass
 
-    def cmd_next(self, num = 1):
+    def cmd_next(self, num=1):
         # TODO Runs #num statements
         cfg_node = self.CFG_pc.next_line()
         iter = 1
@@ -56,7 +59,7 @@ class MainContext:
         return
 
     def cmd_print(self, var_name):
-        vtable = self.cur_func_table.ref_value
+        vtable = self.func_tables.table[self.call_stack.top().name].ref_value
 
         if vtable.has_value(var_name):
             print(val_str(vtable.get_value(var_name)))
@@ -67,17 +70,17 @@ class MainContext:
         if vtable.has_value(var_name):
             print(val_str(vtable.get_value(var_name)))
             return'''
-           
+
         print("Invisible variable")
         return
 
     def cmd_trace(self, var_name):
-        vtable = self.cur_func_table.ref_value
+        vtable = self.func_tables.table[self.call_stack.top().name].ref_value
 
         if vtable.has_value(var_name):
             print(history_str(var_name, vtable.get_history(var_name)))
             return
-       
+
         '''vtable = self.global_table.ref
         if vtable.has_value(var_name):
             print(history_str(var_name, vtable.get_history(var_name)))
@@ -85,6 +88,7 @@ class MainContext:
 
         print("Invisible variable")
         return
+
 
 if __name__ == '__main__':
     parser = parse.parser
@@ -108,7 +112,7 @@ if __name__ == '__main__':
                 if len(args) == 1:
                     ctxt.cmd_next()
                 elif args[1].isnumeric():
-                    ctxt.cmd_next(int(args[1])) # Placeholder
+                    ctxt.cmd_next(int(args[1]))  # Placeholder
                 else:
                     print("Incorrect command usage: try 'next[lines]")
             else:
