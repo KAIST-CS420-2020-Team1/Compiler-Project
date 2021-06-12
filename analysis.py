@@ -61,8 +61,7 @@ def desugar_body(body: parse.Body):
 # Desugar mixed statements
 def desugar_line(stmt):
     if(isinstance(stmt, parse.Declaration)):
-        return [ stmt ]
-        # return [ sub for decl in stmt.desugar() for sub in desugar_decl(decl) ]
+        return desugar_decl(stmt)
     elif(isinstance(stmt, parse.Selection)):
         exes, stmt.cond = desugar_expr(stmt.line_num, stmt.cond)
         for exe in exes:
@@ -116,14 +115,11 @@ def desugar_lines(lines):
     return list(itertools.chain(*map(desugar_line, lines)))
 
 # Desugar a declaration into mix of expressions and declarations
-def desugar_decl(each: parse.EachDecl):
-    if each.value != None:
-        exes, each.value = desugar_expr(each.line_num, each.value)
-        for exe in exes:
-            exe.set_line(each.line_num)
-        return exes + [ each ]
-    else:
-        return [ each ]
+def desugar_decl(decl: parse.Declaration):
+    for da in decl.decl_assigns:
+        if isinstance(da, parse.Assigned):
+            raise ValueError('Declaration with substitution, not supported', decl.line_num)
+    return [ decl ]
 
 def is_lvalue(expr):
     if(isinstance(expr, parse.Identifier)):
