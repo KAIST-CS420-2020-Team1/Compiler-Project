@@ -4,6 +4,8 @@ import copy
 from stack import *
 from structure import *
 
+node_index = 0
+
 
 value_stack = ValueStack()
 call_stack = CallStack()
@@ -11,8 +13,10 @@ function_table = Function_Table()
 
 
 class Node:
-    def __init__(self, block, line_list, pred=[]):
-        self.index = -1
+    def __init__(self, block, line_list, pred=None):
+        global node_index
+        self.index = node_index
+        node_index += 1
         self.prev = []
         self.next = []
 
@@ -49,13 +53,31 @@ class Node:
         pass
 
     def next_line(self):
-        node = copy.deepcopy(self)
-        if len(node.block) == 0:
-            node = node.next_line()
-        return_value = evaluate(0, node.get_line(node.cursor))
-        if node.cursor < (len(node.block) -1):
-            node.cursor += 1
-            return node
+        node = self
+        if len(node.block) != 0:
+            evaluate(0, node.get_line(node.cursor))
+            if node.cursor < (len(node.block) -1):
+                node.cursor += 1
+                return node
+            else:
+                if node.branch:
+                    # for i, pred in enumerate(self.pred):
+                    #     if evaluate(pred):
+                    #         next = self.get_next()[i]
+                    #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
+                    # raise Exception("no true branch")
+                    if evaluate(0, node.pred): # Ideally, substitution should not be here
+                        next = node.get_next()[0]
+                        return next
+                    else:
+                        next = node.get_next()[1]
+                        return next
+                else:
+                    if len(node.get_next()) > 0:
+                        next = node.get_next()[0]
+                        return next
+                    else:
+                        return None
         else:
             if node.branch:
                 # for i, pred in enumerate(self.pred):
@@ -63,7 +85,7 @@ class Node:
                 #         next = self.get_next()[i]
                 #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
                 # raise Exception("no true branch")
-                if evaluate(0, node.pred): # Ideally, substitution should not be here
+                if evaluate(0, node.pred):  # Ideally, substitution should not be here
                     next = node.get_next()[0]
                     return next
                 else:
@@ -153,6 +175,8 @@ def evaluate(line, expr):
         elif isinstance(expr, parse.UniOp):
             # only a++?
             operand = evaluate(line, expr.operand)
+            value = binop('+', operand, 1)
+            cur_value_table.set_value(expr.operand.name, value, line)
             # op = expr.op
             return binop('+', operand, 1)
         elif isinstance(expr, parse.FuncCall):
@@ -179,6 +203,17 @@ def evaluate(line, expr):
                 else:
                     evaluate(stmt.line_num, stmt)
             return return_value
+        elif isinstance(expr, parse.PrintStmt):
+            format = expr.format
+            value = evaluate(line, expr.value)
+            if value != None:
+                print(format %(value))
+            else:
+                if "%d" in format or "%f" in format:
+                    raise Exception("formatting error")
+                else:
+                    print(format)
+            return None
     return None
 
 
@@ -245,6 +280,7 @@ def generate_graph(ast):
             block.append(stmt)
             # line_list.append(line)
         elif isinstance(stmt, parse.Iteration):
+            block.append(stmt.loopDesc.init)
             pred = get_pred(stmt)  # [true_pred, false_pred]
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
@@ -262,7 +298,13 @@ def generate_graph(ast):
             #     last_nodes[0].insert_next(br_node)
             #     branch_last_node += br_last_node
 
+            for_iter = stmt.loopDesc.iter
+
+            iter_stmt = parse.Statement(for_iter)
+            iter_stmt.set_line(stmt.line_num)
+
             body = stmt.body
+            body.stmts.append(iter_stmt)
             loop_node, loop_last_node = generate_graph(body)
 
             loop_end_node = Node([], [], copy.deepcopy(pred))
