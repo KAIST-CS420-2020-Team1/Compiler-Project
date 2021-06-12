@@ -1,9 +1,0 @@
-int main() {
-    int i;
-    i=1 + 2;
-    if (i<5) {
-        i = 5;
-    }
-    printf("%d\n", 3);
-    return 0;
-}

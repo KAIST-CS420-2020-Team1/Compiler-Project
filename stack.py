@@ -16,8 +16,8 @@ class ValueTable:
         self.table[name] = value_stack.allocate(value, line)
     # Frees all local variable
     def free_local(self):
-        self.table.clear()
         value_stack.free(len(self.table))
+        self.table.clear()
 
     def has_value(self, name):
         return name in self.table
@@ -48,7 +48,8 @@ class ValueStack:
         return index
     # Frees num amount of values - Can automate this process
     def free(self, num):
-        self.values = self.values[:-num]
+        if num != 0:
+            self.values = self.values[:-num]
 
     def __get__(self, address):
         if(address == -1):
