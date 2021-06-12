@@ -88,16 +88,14 @@ class Node:
                 # raise Exception("no true branch")
                 if evaluate(0, node.pred):  # Ideally, substitution should not be here
                     next = node.get_next()[0]
-                    return next
                 else:
                     next = node.get_next()[1]
-                    return next
             else:
                 if len(node.get_next()) > 0:
                     next = node.get_next()[0]
-                    return next
                 else:
                     return None
+            return next.next_line()
 
 
 def binop(op, lhs, rhs):
