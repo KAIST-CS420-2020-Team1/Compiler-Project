@@ -27,6 +27,9 @@ class ValueTable:
     # Gets value from address
     def get_value_from_address(self, addr):
         return value_stack.get_value(addr)
+    # Sets value from address
+    def set_value_from_address(self, addr, value, line):
+        value_stack.set_value(addr, value, line)
     def get_value(self, name):
         return value_stack.get_value(self.table[name])
     def get_history(self, name):
