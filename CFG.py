@@ -14,6 +14,16 @@ function_table = Function_Table()
 
 temp_dictionary = {}
 
+line_num = -1
+
+
+class Dummy:
+    def __init__(self):
+        self.dummy = True
+
+    def __str__(self):
+        return "Dummy Statement"
+
 class Node:
     def __init__(self, block, line_list, pred=None):
         global node_index
@@ -55,12 +65,18 @@ class Node:
         pass
 
     def next_line(self):
+        global line_num
         node = self
+        dummy_stmt = Dummy()
+        next_node = None
+        expr = None
         if len(node.block) != 0:
-            evaluate(0, node.get_line(node.cursor))
+            expr = node.get_line(node.cursor)
+            evaluate(0, expr)
+            line_num = node.get_line_list()[node.cursor]
             if node.cursor < (len(node.block) -1):
                 node.cursor += 1
-                return node
+                next_node = node
             else:
                 node.cursor = 0
                 if node.branch:
@@ -70,17 +86,14 @@ class Node:
                     #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
                     # raise Exception("no true branch")
                     if evaluate(0, node.pred): # Ideally, substitution should not be here
-                        next = node.get_next()[0]
-                        return next
+                        next_node = node.get_next()[0]
                     else:
-                        next = node.get_next()[1]
-                        return next
+                        next_node = node.get_next()[1]
                 else:
                     if len(node.get_next()) > 0:
-                        next = node.get_next()[0]
-                        return next
+                        next_node = node.get_next()[0]
                     else:
-                        return None
+                        pass
         else:
             if node.branch:
                 # for i, pred in enumerate(self.pred):
@@ -89,16 +102,30 @@ class Node:
                 #         return next, next.get_line(self.get_line_list()[0]), self.get_line_list()[0]
                 # raise Exception("no true branch")
                 if evaluate(0, node.pred):  # Ideally, substitution should not be here
-                    next = node.get_next()[0]
+                    next_node = node.get_next()[0]
                 else:
-                    next = node.get_next()[1]
+                    next_node = node.get_next()[1]
             else:
                 if len(node.get_next()) > 0:
-                    next = node.get_next()[0]
+                    next_node = node.get_next()[0]
                 else:
-                    return None
-            return next.next_line()
-
+                    pass
+            next_node = next_node.next_line()
+        if expr != None and next_node != None:
+            if len(next_node.block) != 0:
+                cur_line = next_node.get_line_list()[next_node.cursor]
+                # print(node.cursor, line_num, cur_line)
+                # print(expr)
+                if not ((isinstance(expr, parse.Statement) and expr.returning) or (
+                        isinstance(expr, parse.Statement) and isinstance(expr.content, parse.FuncCall)) or (
+                                isinstance(expr, parse.Statement) and isinstance(expr.content, parse.Assign) and isinstance(
+                                expr.content.rvalue, parse.FuncCall) or (
+                                        isinstance(expr, parse.Assign) and isinstance(expr.rvalue,
+                                                                                      parse.FuncCall)))) and line_num != -1 and cur_line > line_num + 1:
+                    # print("Insert Dummy")
+                    next_node.block.insert(next_node.cursor, dummy_stmt)
+                    next_node.line_list.insert(next_node.cursor, line_num + 1)
+        return next_node
 
 def binop(op, lhs, rhs):
     operations = {'+': operator.add, '-': operator.sub, '*': operator.mul, '/': operator.truediv, '<': operator.lt, '>': operator.gt, '==': operator.eq}
@@ -114,8 +141,10 @@ def evaluate(line, expr):
     cur_fun_table = function_table.table[cur_fun_name]
     cur_symbol_table = cur_fun_table.ref_sym
     cur_value_table = cur_fun_table.ref_value
-
-    if isinstance(expr, parse.Statement) and expr.returning:
+    if isinstance(expr, Dummy):
+        print("Dummy Statement")
+        return None
+    elif isinstance(expr, parse.Statement) and expr.returning:
         # return something;
         return_value = evaluate(expr.line_num, expr.content)
         cur_fun_table.return_value = return_value
@@ -340,12 +369,15 @@ def generate_graph(ast):
     for stmt in ast.stmts:
         if not isinstance(stmt, parse.Selection) and not isinstance(stmt, parse.Iteration) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall)) and not (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall)) and not (isinstance(stmt, parse.Assign) and isinstance(stmt.rvalue, parse.FuncCall)):
             block.append(stmt)
-            # line_list.append(line)
+            line_num = stmt.line_num
+            line_list.append(line_num)
         elif isinstance(stmt, parse.Iteration):
             for_init = stmt.loopDesc.init
             init_stmt = parse.Statement(for_init)
             init_stmt.set_line(stmt.line_num)
             block.append(init_stmt)
+            line_num = init_stmt.line_num
+            line_list.append(line_num)
 
             pred = get_pred(stmt)  # [true_pred, false_pred]
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
@@ -381,6 +413,8 @@ def generate_graph(ast):
                 last_node.insert_next(loop_node)
         elif (isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.FuncCall)):
             block.append(stmt)
+            line_num = stmt.line_num
+            line_list.append(line_num)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
             for last_node in last_nodes:
@@ -406,6 +440,8 @@ def generate_graph(ast):
             last_nodes = call_last_node
         elif isinstance(stmt, parse.Statement) and isinstance(stmt.content, parse.Assign) and isinstance(stmt.content.rvalue, parse.FuncCall) or (isinstance(stmt, parse.Assign) and isinstance(stmt.rvalue, parse.FuncCall)):
             block.append(stmt)
+            line_num = stmt.line_num
+            line_list.append(line_num)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
 
             for last_node in last_nodes:
@@ -432,6 +468,7 @@ def generate_graph(ast):
             last_nodes[0].insert_next(call_node)
             last_nodes = call_last_node
             block = [stmt]
+            line_list = [stmt.line_num]
         else:  # if branch
             pred = get_pred(stmt)
             node = Node(copy.deepcopy(block), copy.deepcopy(line_list), copy.deepcopy(pred))
