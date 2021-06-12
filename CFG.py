@@ -190,8 +190,10 @@ def evaluate(line, expr):
 
                 if isinstance(var_type, parse.Arrayed):
                     var_length = var_type.len
-                    var_type = var_type.base.type + ' array'
+                    var_type = var_type.base.type + ' pointer'
                     var_init_value = [None] * var_length
+                elif isinstance(var_type, parse.Asterisked):
+                    var_type = var_type.base.type + ' pointer'
                 else:
                     var_type = var_type.type
 
@@ -214,6 +216,8 @@ def evaluate(line, expr):
 
             _op = expr.op
             value = evaluate(line, expr.rvalue)
+            print(expr)
+            print(line)
             # type check needed
 
             #
@@ -221,26 +225,40 @@ def evaluate(line, expr):
                 var = expr.lvalue
                 if isinstance(var, parse.ArrayIdx):
                     array_name = var.array.name
+                    if array_name in cur_value_table.table:
+                        value_table = cur_value_table
+                    else:
+                        value_table = global_value_table
                     array_index = evaluate(0, var.index)
-                    array_cur_value = cur_value_table.get_value(array_name)
+                    array_cur_value = value_table.get_value(array_name)
                     array_value = copy.deepcopy(array_cur_value)
                     array_value[array_index] = value
-                    cur_value_table.set_value(array_name, array_value, line)
+                    value_table.set_value(array_name, array_value, line)
                 elif isinstance(var, parse.Temp_Ident):
                     temp_var_name = var.name
                     temp_dictionary[temp_var_name] = value
                 else:
                     var_name = var.name
-                    var_type = cur_symbol_table.table[var_name].type
+                    if var_name in cur_value_table.table:
+                        value_table = cur_value_table
+                        symbol_table = cur_symbol_table
+                    else:
+                        value_table = global_value_table
+                        symbol_table = global_symbol_table
+                    var_type = symbol_table.table[var_name].type
                     if var_type == 'int':
                         value = int(value)
                     elif var_type == 'float':
                         value = float(value)
-                    cur_value_table.set_value(var_name, value, line)
+                    value_table.set_value(var_name, value, line)
             return None
         elif isinstance(expr, parse.Identifier):
             # variable: a
-            return cur_value_table.get_value(expr.name)
+            if expr.name in cur_value_table.table:
+                value_table = cur_value_table
+            else:
+                value_table = global_value_table
+            return value_table.get_value(expr.name)
         elif isinstance(expr, parse.Temp_Ident):
             return temp_dictionary[expr.name]
         elif isinstance(expr, parse.ArrayIdx):
@@ -279,11 +297,11 @@ def evaluate(line, expr):
             fun_params = function_table.table[fn_name].p_name
             fun_args = expr.args
 
-            for param, arg in zip(fun_params, fun_args):
-                function_table.table[fn_name].ref_value.allocate_local(param, None, function_table.table[fn_name].line)
-                function_table.table[fn_name].ref_value.set_value(param, evaluate(line, arg), line)
-
             if function_table.table[fn_name].return_value == None:
+                for param, arg in zip(fun_params, fun_args):
+                    function_table.table[fn_name].ref_value.allocate_local(param, None,
+                                                                           function_table.table[fn_name].line)
+                    function_table.table[fn_name].ref_value.set_value(param, evaluate(line, arg), line)
                 call_stack.link(CallContext(fn_name, line))
             else:
                 return_value = function_table.table[fn_name].return_value
@@ -364,6 +382,32 @@ def generate_graph(ast):
                     call_stack.link(CallContext(fun_name, function_table.table['main'].line))
                     block = [Dummy()]
                     line_list = [function_table.table['main'].line+1]
+            elif isinstance(decl, parse.Declaration):
+                variables = decl.desugar()
+                for variable in variables:
+                    var_name = variable.name
+                    var_type = variable.type
+                    var_length = 1
+                    var_init_value = None
+
+                    if isinstance(var_type, parse.Arrayed):
+                        var_length = var_type.len
+                        var_type = var_type.base.type + ' array'
+                        var_init_value = [None] * var_length
+                    else:
+                        var_type = var_type.type
+
+                    # p = re.compile(r"(.+)\[(.+)\]")
+                    # m = p.match(var_name)
+                    # if m != None:
+                    #     var_name = m.group(1)
+                    #     var_length = m.group(2)
+                    #     var_init_value = [None] * var_length
+                    # else:
+                    #     var_length = 1
+
+                    global_symbol_table.insert(var_name, var_type, var_length)
+                    global_value_table.allocate_local(var_name, var_init_value, decl.line_num)
             else:
                 pass
 
