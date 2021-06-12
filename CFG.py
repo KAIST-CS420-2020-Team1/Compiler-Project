@@ -11,6 +11,8 @@ node_index = 0
 value_stack = ValueStack()
 call_stack = CallStack()
 function_table = Function_Table()
+global_symbol_table = Symbol_Table(None)
+global_value_table = ValueTable()
 
 temp_dictionary = {}
 
@@ -72,7 +74,7 @@ class Node:
         expr = None
         if len(node.block) != 0:
             expr = node.get_line(node.cursor)
-            evaluate(0, expr)
+            evaluate(node.get_line_list()[node.cursor], expr)
             line_num = node.get_line_list()[node.cursor]
             if node.cursor < (len(node.block) -1):
                 node.cursor += 1
