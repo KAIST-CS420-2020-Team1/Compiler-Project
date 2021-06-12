@@ -141,31 +141,58 @@ def evaluate(line, expr):
         #
         #     function_table.insert(fun_name, fun_type, p_types, 1, body, symbol_table)
         if isinstance(expr, parse.Declaration):
-            variables = expr.decl_assigns
-            var_type = expr.base_type.type
+            # variables = expr.decl_assigns
+            # var_type = expr.base_type.type
             # int a; no declaration with init value.
+            variables = expr.desugar()
             for variable in variables:
                 var_name = variable.name
-                cur_symbol_table.insert(var_name, var_type, 1)
-                cur_value_table.allocate_local(var_name, None, expr.line_num)
+                var_type = variable.type
+                var_length = 1
+                var_init_value = None
+
+                if isinstance(var_type, parse.Arrayed):
+                    var_length = var_type.len
+                    var_type = var_type.base.type + ' array'
+                    var_init_value = [None] * var_length
+                else:
+                    var_type = var_type.type
+
+                # p = re.compile(r"(.+)\[(.+)\]")
+                # m = p.match(var_name)
+                # if m != None:
+                #     var_name = m.group(1)
+                #     var_length = m.group(2)
+                #     var_init_value = [None] * var_length
+                # else:
+                #     var_length = 1
+
+
+
+                cur_symbol_table.insert(var_name, var_type, var_length)
+                cur_value_table.allocate_local(var_name, var_init_value, expr.line_num)
             return None
         elif isinstance(expr, parse.Assign):
             # a = 2;
-            var_name = expr.lvalue.name
-            p = re.compile(r"(.+)\[(.+)\]")
-            m = p.match(var_name)
-            if m != None:
-                var_name = m.group(1)
-                var_length = m.group(2)
-            else:
-                var_length = 1
+
             _op = expr.op
             value = evaluate(line, expr.rvalue)
             # type check needed
 
             #
             if value != None:
-                cur_value_table.set_value(var_name, value, line)
+                var = expr.lvalue
+                if isinstance(var, parse.ArrayIdx):
+                    array_name = var.array.name
+                    array_index = evaluate(0, var.index)
+                    array_cur_value = cur_value_table.get_value(array_name)
+                    array_value = copy.deepcopy(array_cur_value)
+                    array_value[array_index] = value
+                    cur_value_table.set_value(array_name, array_value, line)
+
+                else:
+                    var_name = var.name
+                    cur_value_table.set_value(var_name, value, line)
             return None
         elif isinstance(expr, parse.Identifier):
             # variable: a
