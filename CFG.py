@@ -110,7 +110,8 @@ class Node:
                     next_node = node.get_next()[0]
                 else:
                     pass
-            next_node = next_node.next_line()
+            if next_node != None:
+                next_node = next_node.next_line()
         if expr != None and next_node != None:
             if len(next_node.block) != 0:
                 cur_line = next_node.get_line_list()[next_node.cursor]
@@ -354,10 +355,12 @@ def generate_graph(ast):
 
                 body = decl.body
 
-                function_table.insert(fun_name, fun_type, p_types, p_names, 1, body, symbol_table, value_table, None)
+                function_table.insert(fun_name, fun_type, p_types, p_names, decl.line_num, body, symbol_table, value_table, None)
                 if fun_name == 'main':
                     ast = body
-                    call_stack.link(CallContext(fun_name, 1))
+                    call_stack.link(CallContext(fun_name, function_table.table['main'].line))
+                    block = [Dummy()]
+                    line_list = [function_table.table['main'].line+1]
             else:
                 pass
 
