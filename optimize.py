@@ -244,8 +244,8 @@ class OptimData:
         self.visited = False
 
 # Calculates 'in' and 'out' variables and fills the information within each node
-def calc_in_out(store: "dict[str, OptimData]", node: CFG.Node):
-    nst = store[node.index]
+def calc_in_out(store: "dict[int, OptimData]", node: CFG.Node):
+    nst = store.get(node.index, OptimData())
     if not nst.initialized: # Updates the used/defined
         for stmt in node.block:
             nst_line = OptimData()
@@ -343,7 +343,7 @@ def eliminate_dead_stmt(out: "set[str]", stmt):
 
 # Eliminate dead code within this and successor nodes. Mutates CFG.
 # Does not change branch condition, for it can cause anomalies
-def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):
+def eliminate_dead(store: "dict[int, OptimData]", node: CFG.Node):
     new_block = list()
     i = 0
     for stmt in node.block: # Finds corresponding information
@@ -360,7 +360,6 @@ def eliminate_dead(store: "dict[str, OptimData]", node: CFG.Node):
 # Currently, does not eliminate dead code caused by eliminating the previous dead code
 def dead_code_elimination(node: CFG.Node):
     store = dict()
-    store.setdefault(OptimData())
     calc_in_out(store, node) # First pass
     for v in store.values:
         v.visited = False
@@ -370,7 +369,7 @@ def dead_code_elimination(node: CFG.Node):
     eliminate_dead(store, node)
 
 
-def const_eval_each(visited:"dict[str, bool]", node: CFG.Node):
+def const_eval_each(visited:"dict[int, bool]", node: CFG.Node):
     visited[node.index] = True
     node.block = list(map(const_eval_in_stmt, node.block))
     if node.pred != None:
@@ -381,5 +380,5 @@ def const_eval_each(visited:"dict[str, bool]", node: CFG.Node):
 # Constant evaluation in CFG. Mutates CFG
 def const_eval_node(node: CFG.Node):
     visited = dict()
-    visited.setdefault(False)
+    # visited.setdefault(False)
     const_eval_each(visited, node)

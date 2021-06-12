@@ -42,13 +42,9 @@ def desugar_ast(ast: parse.TranslationUnit):
     fns = list(filter(is_instance(parse.FunctionDefn), ast.decls))
     # print(is_instance(parse.FunctionDefn)(ast.decls[0]), isinstance(ast.decls[0], parse.FunctionDefn))
     desugar_tdecls = desugar_lines(top_decls)
-    for decl in desugar_tdecls:
-        if decl.value != None and not isinstance(decl.value, parse.Const):
-            print('Nonconstant value {} not allowed in top level declarations', decl.value)
-            raise ValueError('semantic error')
     for fn in fns:
         fn.body = desugar_body(fn.body)
-    return parse.TranslationUnit(desugar_lines(top_decls) + fns)
+    return parse.TranslationUnit(desugar_tdecls + fns)
 
 # Desugars the function body
 def desugar_body(body: parse.Body):
