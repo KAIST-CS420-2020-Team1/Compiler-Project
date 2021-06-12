@@ -79,6 +79,8 @@ class MainContext:
             vtable = self.cur_func_table.ref_value
         else:
             vtable = self.func_tables.table[self.call_stack.top().name].ref_value
+        if not vtable.has_value(name):
+            vtable = self.global_value_table
 
         return vtable.get_address(name)
 

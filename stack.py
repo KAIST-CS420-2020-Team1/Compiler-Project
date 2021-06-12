@@ -19,12 +19,20 @@ class ValueTable:
         self.table.clear()
 
     def has_value(self, name):
-        return name in self.table
+        if (name in self.table.keys()):
+            return name in self.table
+        else:
+            return
     # Gets address for given name
     def get_address(self, name):
-        return self.table[name]
+        if (name in self.table.keys()):
+            return self.table[name]
+        else:
+            return None
     # Gets value from address
     def get_value_from_address(self, addr):
+        if (isinstance(addr, int) == False):
+            return None
         if addr >= 0 and addr < len(value_stack.values):
             return value_stack.get_value(addr)
         else:
@@ -54,10 +62,14 @@ class ValueStack:
             self.values = self.values[:-num]
 
     def __get__(self, address):
+        if(isinstance(address, int) == False):
+            return None
+
         if(address == -1):
-            return {"value": None, "history": []} # Not yet initialized
+            return {"value": None, "history": []} # Not yet initialized]
         if(address > len(self.values) or address < 0):
             print("Error: Stack inconsistency")
+            return None
         return self.values[address]
     # Attains certain value via address
     def get_value(self, address):
