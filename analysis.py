@@ -25,7 +25,7 @@ class Temp_Ident():
     def __init__(self, name):
         self.name = name
     def __str__(self):
-        return str(self.name)
+        return "[|{}|]".format(self.name)
 
 # Representa a function call along with putting it into some ref
 # Replaces FuncCall
@@ -35,7 +35,7 @@ class Fn_Call_Stmt(parse.Lined):
         self.args = args
         self.store_name = store_name
     def __str__(self):
-        return "{} = {}({})".format(self.store_name, self.fn_name, ",".join(map(str, self.args)))
+        return "{}> {} = {}({})".format(self.line_num, self.store_name, self.fn_name, ",".join(map(str, self.args)))
 
 def is_branching(stmt):
     as_stmt = isinstance(stmt, parse.Iteration) or isinstance(stmt, parse.Selection)
@@ -44,8 +44,8 @@ def is_branching(stmt):
 
 # Desugars the entire AST (for the source code file)
 def desugar_ast(ast: parse.TranslationUnit):
-    top_decls = filter(is_instance(parse.Declaration), ast.decls)
-    fns = filter(is_instance(parse.FunctionDefn), ast.decls)
+    top_decls = list(filter(is_instance(parse.Declaration), ast.decls))
+    fns = list(filter(is_instance(parse.FunctionDefn), ast.decls))
     desugar_tdecls = desugar_lines(top_decls)
     for decl in desugar_tdecls:
         if decl.value != None and not isinstance(decl.value, parse.Const):
