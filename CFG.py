@@ -101,7 +101,11 @@ class Node:
 
 def binop(op, lhs, rhs):
     operations = {'+': operator.add, '-': operator.sub, '*': operator.mul, '/': operator.truediv, '<': operator.lt, '>': operator.gt, '==': operator.eq}
-    return operations[op](lhs, rhs)
+    result = operations[op](lhs, rhs)
+    if op in ['+', '-', '*', '/']:
+        if type(lhs) == int and type(rhs) == int:
+            result = int(result)
+    return result
 
 
 def evaluate(line, expr):
@@ -192,6 +196,11 @@ def evaluate(line, expr):
 
                 else:
                     var_name = var.name
+                    var_type = cur_symbol_table.table[var_name].type
+                    if var_type == 'int':
+                        value = int(value)
+                    elif var_type == 'float':
+                        value = float(value)
                     cur_value_table.set_value(var_name, value, line)
             return None
         elif isinstance(expr, parse.Identifier):
