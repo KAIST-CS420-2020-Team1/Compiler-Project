@@ -1,6 +1,7 @@
 import parse
 import operator
 import copy
+import re
 from stack import *
 from structure import *
 
@@ -151,6 +152,13 @@ def evaluate(line, expr):
         elif isinstance(expr, parse.Assign):
             # a = 2;
             var_name = expr.lvalue.name
+            p = re.compile(r"(.+)\[(.+)\]")
+            m = p.match(var_name)
+            if m != None:
+                var_name = m.group(1)
+                var_length = m.group(2)
+            else:
+                var_length = 1
             _op = expr.op
             value = evaluate(line, expr.rvalue)
             # type check needed
@@ -180,6 +188,9 @@ def evaluate(line, expr):
                 return binop('+', operand, 1)
             elif expr.op == '-' and not expr.postfix:
                 operand = -1 * evaluate(line, expr.operand)
+                return operand
+            elif expr.op == '+' and not expr.postfix:
+                operand = evaluate(line, expr.operand)
                 return operand
             raise Exception("not implemented uniop")
             # op = expr.op
