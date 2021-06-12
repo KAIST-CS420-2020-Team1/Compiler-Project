@@ -197,6 +197,12 @@ def evaluate(line, expr):
         elif isinstance(expr, parse.Identifier):
             # variable: a
             return cur_value_table.get_value(expr.name)
+        elif isinstance(expr, parse.ArrayIdx):
+            # variable: a
+            array_name = expr.array.name
+            array_index = evaluate(0, expr.index)
+            array_cur_value = cur_value_table.get_value(array_name)
+            return array_cur_value[array_index]
         elif isinstance(expr, parse.Const):
             # const: 3
             return expr.value
