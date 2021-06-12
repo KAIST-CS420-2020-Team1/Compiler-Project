@@ -255,7 +255,7 @@ def evaluate(line, expr):
             format = expr.format
             value = evaluate(line, expr.value)
             if value != None:
-                print(format %(value))
+                print(format %(value), end='')
             else:
                 if "%d" in format or "%f" in format:
                     raise Exception("formatting error")
