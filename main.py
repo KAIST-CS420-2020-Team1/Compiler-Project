@@ -54,7 +54,6 @@ class MainContext:
         self.func_tables = CFG.function_table
         self.val_stack = CFG.value_stack
         self.call_stack = CFG.call_stack
-        self.call_stack = CFG.call_stack
         self.global_value_table = CFG.global_value_table
 
     def begin(self):
@@ -62,7 +61,6 @@ class MainContext:
         pass
 
     def referencing(self, addr):
-        print("referencing: ", addr)
         if (addr == None):
             return None
 
@@ -74,7 +72,6 @@ class MainContext:
         return vtable.get_value_from_address(addr)
 
     def dereferencing(self, name):
-        print("dereferencing", name)
         if (name == None):
             return None
 
@@ -223,7 +220,6 @@ if __name__ == '__main__':
     input_file = open(sys.argv[1])
     parsed = parser.parse(input_file.read(), tracking=True)
     parsed = analysis.desugar_ast(parsed)
-    print(parsed)
     input_file.close()
     ctxt = MainContext(parsed)
 
