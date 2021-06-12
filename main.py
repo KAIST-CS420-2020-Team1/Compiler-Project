@@ -54,10 +54,36 @@ class MainContext:
         self.func_tables = CFG.function_table
         self.val_stack = CFG.value_stack
         self.call_stack = CFG.call_stack
+        self.call_stack = CFG.call_stack
+        self.global_value_table = CFG.global_value_table
 
     def begin(self):
         self.cur_func_table = self.func_tables.table["main"]
         pass
+
+    def referencing(self, addr):
+        print("referencing: ", addr)
+        if (addr == None):
+            return None
+
+        if (len(self.call_stack.called) == 0):
+            vtable = self.cur_func_table.ref_value
+        else:
+            vtable = self.func_tables.table[self.call_stack.top().name].ref_value
+
+        return vtable.get_value_from_address(addr)
+
+    def dereferencing(self, name):
+        print("dereferencing", name)
+        if (name == None):
+            return None
+
+        if (len(self.call_stack.called) == 0):
+            vtable = self.cur_func_table.ref_value
+        else:
+            vtable = self.func_tables.table[self.call_stack.top().name].ref_value
+
+        return vtable.get_address(name)
 
     def cmd_next(self, num=1):
         # TODO Runs #num statements
@@ -92,6 +118,16 @@ class MainContext:
                 else:
                     print("Invisible variable")
             return
+        elif self.global_value_table.has_value(var):
+            if (idx == None):
+                print(val_str(self.global_value_table.get_value(var)))
+            else:
+                arr = self.global_value_table.get_value(var)
+                if ((-len(arr) <= idx) and (idx < len(arr))):
+                    print(val_str(self.global_value_table.get_value(var)[idx]))
+                else:
+                    print("Invisible variable")
+            return
 
         '''vtable = self.global_table.ref.ref_value
 
@@ -118,6 +154,16 @@ class MainContext:
                 else:
                     print("Invisible variable")
             return
+        elif self.global_value_table.has_value(var):
+            if (idx == None):
+                print(history_str(var, idx, self.global_value_table.get_history(var)))
+            else:
+                arr = self.global_value_table.get_value(var)
+                if ((-len(arr) <= idx) and (idx < len(arr))):
+                    print(history_str(var, idx, self.global_value_table.get_history(var)))
+                else:
+                    print("Invisible variable")
+            return
 
         '''vtable = self.global_table.ref
         if vtable.has_value(var_name):
@@ -126,6 +172,49 @@ class MainContext:
 
         print("Invisible variable")
         return
+
+
+def print_recursive_ref_pointer(ctxt, expr):
+    if (expr[0] == "*"):
+        if (expr[1] == "&"):
+            return ctxt.referencing(print_recursive_deref_pointer(ctxt, expr[1:]))
+        else:
+            return ctxt.referencing(print_recursive_ref_pointer(ctxt, expr[1:]))
+    elif (expr[0] == "&"):
+        if (expr[1] == "&"):
+            return ctxt.referencing(print_recursive_deref_pointer(ctxt, expr[1:]))
+        else:
+            return ctxt.referencing(print_recursive_ref_pointer(ctxt, expr[1:]))
+    else:
+        var = re.findall(r"([A-Za-z_][\w]*$)", expr)
+        if (len(var) == 0):
+            if (expr.isnumeric()):
+                return int(expr)
+            else:
+                return None
+        var = var[0]
+        if (len(ctxt.call_stack.called) == 0):
+            vtable = ctxt.cur_func_table.ref_value
+        else:
+            vtable = ctxt.func_tables.table[ctxt.call_stack.top().name].ref_value
+        return vtable.get_value(var)
+
+
+def print_recursive_deref_pointer(ctxt, expr):
+    if (expr[0] == "*"):
+        if (expr[1] == "*"):
+            return ctxt.dereferencing(print_recursive_ref_pointer(ctxt, expr[1:]))
+        else:
+            return ctxt.dereferencing(print_recursive_deref_pointer(ctxt, expr[1:]))
+    elif (expr[0] == "&"):
+        if (expr[1] == "*"):
+            return ctxt.dereferencing(print_recursive_ref_pointer(ctxt, expr[1:]))
+        else:
+            return ctxt.dereferencing(print_recursive_deref_pointer(ctxt, expr[1:]))
+    else:
+        var = re.findall(r"([A-Za-z_][\w]*$)", expr)
+        var = var[0]
+        return var
 
 
 if __name__ == '__main__':
@@ -171,6 +260,10 @@ if __name__ == '__main__':
                 idx = idx[0]
                 idx = int(idx[1:-1])
                 ctxt.cmd_print(var, idx)
+            elif (args[1][0] == "*"):
+                print(val_str(print_recursive_ref_pointer(ctxt, args[1])))
+            elif (args[1][0] == "&"):
+                print(val_str(print_recursive_deref_pointer(ctxt, args[1])))
             else:
                 print("Invalid typing of the variable name")
         elif args[0] == 'trace' and len(args) == 2:

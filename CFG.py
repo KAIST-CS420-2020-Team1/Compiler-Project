@@ -216,8 +216,8 @@ def evaluate(line, expr):
 
             _op = expr.op
             value = evaluate(line, expr.rvalue)
-            print(expr)
-            print(line)
+            # print(expr)
+            # print(line)
             # type check needed
 
             #
